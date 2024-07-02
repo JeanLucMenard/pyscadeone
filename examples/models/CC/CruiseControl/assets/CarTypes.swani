@@ -1,0 +1,43 @@
+type tPercent = float32;
+
+type tRpm = float32;
+
+type tSpeed = float32;
+
+type tTorq = float32;
+
+__END__
+{
+  "ModelTree": {
+    "Children": {
+      "interface[0]": {
+        "Children": {
+          "type[0]": {
+            "Hint": "(1,1)"
+          },
+          "type[1]": {
+            "Hint": "(3,3)"
+          },
+          "type[2]": {
+            "Hint": "(5,5)"
+          },
+          "type[3]": {
+            "Hint": "(7,7)"
+          }
+        },
+        "Properties": {
+          "Graph": {
+            "Order": 1
+          }
+        }
+      }
+    },
+    "Properties": {
+      "Producer": {
+        "Name": "ScadeOneClient",
+        "Version": "1.7.0.0"
+      },
+      "version": "0.1.0"
+    }
+  }
+}

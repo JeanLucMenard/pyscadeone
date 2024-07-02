@@ -1,0 +1,5 @@
+# Common variables used by pipelines
+
+variables:
+  PYTHON_PATH: 'C:\ANSYSDEV\Python310_x64'
+  VersionFile: 'src\ansys\scadeone\__init__.py'

@@ -1,0 +1,26 @@
+{
+  "Kind": "CodeGeneration",
+  "Properties": {
+    "Name": "CodeGen",
+    "NameLength": "200",
+    "SignificanceLength": "31",
+    "RootOperator": "CC::CruiseControl",
+    "Expansion": "",
+    "ExpansionExp": "",
+    "ExpansionNoExp": "",
+    "SeparateIo": "",
+    "SeparateIoSep": "",
+    "SeparateIoNoSep": "",
+    "KeepProbes": "",
+    "ShortCircuitOperators": "",
+    "CustomArguments": ""
+  },
+  "InputPaths": [
+    "assets/CC.swan"
+  ],
+  "ComputedValues": {
+    "Executable": "{{KCG_PATH}}",
+    "Arguments": " -target C -root CC::CruiseControl -name_length 200 -significance_length 31 -target_dir \"{{CURRENT_JOB_OUTPUT_DIR}}\" {{INPUT_MODULES_PATHS}}",
+    "Checksum": "7E86899F229550CF1309B4ECC5C3405B"
+  }
+}

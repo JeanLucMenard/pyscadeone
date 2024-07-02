@@ -1,0 +1,19 @@
+{
+  "Kind": "Simulation",
+  "Properties": {
+    "Name": "SimulationJob0",
+    "RootOperator": "",
+    "FileScenario": "",
+    "CustomArguments": "",
+    "SimulationInputType": "Harness",
+    "TestHarness": "CC_Test::Test"
+  },
+  "InputPaths": [
+    "assets/CC_Test.swan"
+  ],
+  "ComputedValues": {
+    "Executable": "{{SIMU_PATH}}",
+    "Arguments": " -output \"{{CURRENT_JOB_OUTPUT_DIR}}\\trace.sd\" -operator CC_Test::Test -n_cycles 10 {{INPUT_MODULES_PATHS}}",
+    "Checksum": "03C80C8EB853379B13BED8428AB6F6C6"
+  }
+}

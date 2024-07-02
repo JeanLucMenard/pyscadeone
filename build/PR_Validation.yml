@@ -1,0 +1,72 @@
+########################################################
+# Pipeline used by pull requests.
+########################################################
+trigger: none
+
+pool:
+  name: SBU-SCADE-ONE-ToolsPool
+  demands:
+    - CYGWIN_PATH
+
+variables:
+- template: '/build/CommonVariables.yml'
+- name: VersionNumber
+- group: globalaccesstoken
+- group: Artifactory Information
+
+jobs:
+- job: PythonAPI
+  steps:
+  - checkout: self
+    fetchDepth: 1
+    clean: true
+
+  - powershell: |
+     $contents = Get-Content $(VersionFile)
+     $version = [RegEx]::Match($contents,"(__version__ = `")(?<major>\d)[\.|\:](?<minor>\d)[\.|\:](?<build>\d)[\.|\:](?<revision>.*)(`")")
+     $version = -join($version.Groups["major"],".",$version.Groups["minor"],".",$version.Groups["build"])
+     Write-Host "Extracted version number: $version"
+     $FormattedMinor = Get-Date -Format "yyyyMMddHHMMss"
+     Write-Host "FormattedMinor: $FormattedMinor"
+     $version = $version+"."+$FormattedMinor
+     Write-Host "##vso[task.setvariable variable=VersionNumber]$version"
+    displayName: 'Identify Build'
+
+  - powershell: |
+      Write-Host "##vso[build.updatebuildnumber]$(VersionNumber)"
+    displayName: 'Rename build'
+
+  - powershell: |
+      $FileContent = Get-Content -Path $(VersionFile) -Raw
+      $FileContent = $FileContent -replace '(?m)^__version__.*','__version__ = "$(VersionNumber)"'
+      Set-Content -Path $(VersionFile) -Value "$FileContent"
+    displayName: 'Update version in Python file'
+    
+  - script: |
+      set PATH=$(CYGWIN_PATH)\bin;%PATH%
+      set PATH=$(PYTHON_PATH);$(PYTHON_PATH)\Scripts;%PATH%
+      bash -c "echo PATH: $PATH"
+      bash -c "rm -rf .venv"
+      bash -c "dos2unix scripts/*.sh"
+      bash -c "yes | make setup"
+    displayName: 'Setup Environment'
+      
+  - script: |
+      set PATH=$(CYGWIN_PATH)\bin;%PATH%
+      set PATH=$(PYTHON_PATH);$(PYTHON_PATH)\Scripts;%PATH%
+      bash -c "make distrib"
+    displayName: 'Generate Distribution'
+
+  - script: |
+      set PATH=$(CYGWIN_PATH)\bin;%PATH%
+      set PATH=$(PYTHON_PATH)PYTHON_PATH)\Scripts;%PATH%
+      bash -c "make is_smoke "
+    displayName: 'Run smoke test'
+    
+  - task: PublishBuildArtifacts@1
+    displayName: 'Push artifact'
+    inputs:
+      PathtoPublish: '$(Build.SourcesDirectory)\dist\ansys_scadeone-$(VersionNumber).zip'
+      ArtifactName: 'ansys_scadeone'
+      publishLocation: 'Container'
+ 

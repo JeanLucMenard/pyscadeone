@@ -1,0 +1,34 @@
+{
+    "language": "en",
+    "dictionaries": [
+        "pyscadeone",
+        "sphinx"
+    ],
+    "dictionaryDefinitions": [
+        {
+            "name": "pyscadeone",
+            "path": ".cspell/pyscadeone-dictionary.txt",
+            "addWords": true,
+            "scope": "workspace"
+        },
+        {
+            "name": "sphinx",
+            "path": ".cspell/sphinx-dictionary.txt",
+            "addWords": false,
+            "scope": "workspace"
+        }
+    ],
+    "words": [
+    ],
+    "ignoreWords": [
+        "descr",
+        "elems",
+        "IsBAroba",
+        "levelname",
+        "OPEXPR",
+        "predef",
+        "prio",
+        "texpr",
+        "VerifExpr"
+    ]
+}
