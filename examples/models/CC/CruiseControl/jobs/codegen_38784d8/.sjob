@@ -1,4 +1,5 @@
 {
+  "Version": "1.0",
   "Kind": "CodeGeneration",
   "Properties": {
     "Name": "CodeGen",
@@ -17,10 +18,5 @@
   },
   "InputPaths": [
     "assets/CC.swan"
-  ],
-  "ComputedValues": {
-    "Executable": "{{KCG_PATH}}",
-    "Arguments": " -target C -root CC::CruiseControl -name_length 200 -significance_length 31 -target_dir \"{{CURRENT_JOB_OUTPUT_DIR}}\" {{INPUT_MODULES_PATHS}}",
-    "Checksum": "7E86899F229550CF1309B4ECC5C3405B"
-  }
+  ]
 }

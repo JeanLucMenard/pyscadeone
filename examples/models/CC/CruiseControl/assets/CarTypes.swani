@@ -1,3 +1,4 @@
+-- version: 2024.0
 type tPercent = float32;
 
 type tRpm = float32;
@@ -12,18 +13,10 @@ __END__
     "Children": {
       "interface[0]": {
         "Children": {
-          "type[0]": {
-            "Hint": "(1,1)"
-          },
-          "type[1]": {
-            "Hint": "(3,3)"
-          },
-          "type[2]": {
-            "Hint": "(5,5)"
-          },
-          "type[3]": {
-            "Hint": "(7,7)"
-          }
+          "type[0]": {},
+          "type[1]": {},
+          "type[2]": {},
+          "type[3]": {}
         },
         "Properties": {
           "Graph": {
@@ -33,11 +26,7 @@ __END__
       }
     },
     "Properties": {
-      "Producer": {
-        "Name": "ScadeOneClient",
-        "Version": "1.7.0.0"
-      },
-      "version": "0.1.0"
+      "version": "1.0"
     }
   }
 }

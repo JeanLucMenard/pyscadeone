@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2023 ANSYS, Inc.
+# Copyright (c) 2022-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 """
 This module contains the classes for forward expression
@@ -8,28 +8,31 @@ This module contains the classes for forward expression
 from typing import List, Optional, Union
 from typing_extensions import Self
 from enum import Enum, auto
-import ansys.scadeone.swan.common as C
+import ansys.scadeone.swan.common as common
+import ansys.scadeone.swan.scopes as scopes
 from ansys.scadeone.common.exception import ScadeOneException
 
 
 # Forward Expression
 # ======================================================================
-class ForwardLHS(C.SwanItem):
-    """**forward** construct: *current_lhs* ::= *id* | [ *current_lhs* ]"""
+class ForwardLHS(common.SwanItem):
+    """**forward** construct:
+
+    *current_lhs* ::= *id* | [ *current_lhs* ]"""
     def __init__(self,
-                 lhs=Union[C.Identifier, Self]) -> None:
+                 lhs=Union[common.Identifier, Self]) -> None:
         super().__init__()
         self._lhs = lhs
 
     @property
-    def lhs(self) -> Union[C.Identifier, Self]:
-        """Returns current lhs as an Identifier or a ForwardLHS"""
+    def lhs(self) -> Union[common.Identifier, Self]:
+        """Returns current lhs as an Identifier or a ForwardLHS."""
         return self._lhs
 
     @property
     def is_id(self) -> bool:
-        """True when current lhs is an ID"""
-        return isinstance(self.lhs, C.Identifier)
+        """True when current lhs is an ID."""
+        return isinstance(self.lhs, common.Identifier)
 
     def __str__(self) -> str:
         if self.is_id:
@@ -37,38 +40,42 @@ class ForwardLHS(C.SwanItem):
         else:
             return f"[{self.lhs}]"
 
-class ForwardElement(C.SwanItem):
-    """Forward current element: *current_elt* ::= *current_lhs* = *expr* ;"""
+
+class ForwardElement(common.SwanItem):
+    """Forward current element:
+
+    *current_elt* ::= *current_lhs* = *expr* ;"""
     def __init__(self,
                  lhs: ForwardLHS,
-                 expr: C.Expression) -> None:
+                 expr: common.Expression) -> None:
         super().__init__()
         self._lhs = lhs
         self._expr = expr
 
     @property
     def lhs(self) -> ForwardLHS:
-        """Current element"""
+        """Current element."""
         return self._lhs
 
     @property
-    def expr(self) -> C.Expression:
-        """Current element expression"""
+    def expr(self) -> common.Expression:
+        """Current element expression."""
         return self._expr
 
     def __str__(self) -> str:
         return f"{self.lhs} = {self.expr};"
 
 
-class ForwardDim(C.SwanItem):
-    """**forward** construct dimension
+class ForwardDim(common.SwanItem):
+    """**forward** construct dimension:
 
     *dim* ::= << *expr* >> [[ **with** (( << *id* >> | *current_elt* )) {{ *current_elt* }} ]]
 
     Note that:
+
     - there may be no **with** part,
     - or it is an ID followed by a possible empty list,
-    - or if no ID, at least one *current_element*
+    - or if no ID, at least one *current_element*.
 
     The *is_valid()* method checks for that property.
 
@@ -76,22 +83,22 @@ class ForwardDim(C.SwanItem):
     ----------
 
     expr: C.Expression
-       dimension expression
+       Dimension expression.
 
     id: C.Identifier (optional)
-       **with** ID
+       **with** ID.
 
     elems: List[ForwardElement] (optional)
-       **with** elements part
+       **with** elements part.
 
     protected: str (optional)
         Content of the dimension if it syntactically incorrect.
-        In that case, all other parameters are None
+        In that case, all other parameters are None.
 
     """
     def __init__(self,
-                 expr: Optional[C.Expression] = None,
-                 dim_id: Optional[C.Identifier] = None,
+                 expr: Optional[common.Expression] = None,
+                 dim_id: Optional[common.Identifier] = None,
                  elems: Optional[List[ForwardElement]] = None,
                  protected: Optional[str] = None
                  ) -> None:
@@ -109,27 +116,27 @@ class ForwardDim(C.SwanItem):
 
     @property
     def value(self) -> str:
-        """Protected dimension content"""
+        """Protected dimension content."""
         return self._protected
 
     @property
-    def expr(self) -> C.Expression:
-        """**forward** dimension expression"""
+    def expr(self) -> common.Expression:
+        """**forward** dimension expression."""
         return self._expr
 
     @property
-    def dim_id(self) -> Union[C.Identifier, None]:
-        """**forward** dimension ID, or None"""
+    def dim_id(self) -> Union[common.Identifier, None]:
+        """**forward** dimension ID, or None."""
         return self._dim_id
 
     @property
     def elems(self) -> Union[List[ForwardElement], None]:
-        """**forward** dimension elements or None"""
+        """**forward** dimension elements or None."""
         return self._elems
 
     @property
     def is_valid(self):
-        """Return True when ID is given, or list of elements is not empty"""
+        """Returns True when ID is given, or list of elements is not empty."""
         if self.is_protected:
             return False
         if self.dim_id:
@@ -140,7 +147,7 @@ class ForwardDim(C.SwanItem):
 
     def __str__(self) -> str:
         if self.is_protected:
-            return C.Markup.to_str(self.value, markup=C.Markup.Dim)
+            return common.Markup.to_str(self.value, markup=common.Markup.Dim)
         dim = f"<<{self.expr}>>"
         if self.dim_id or self.elems:
             dim += " with"
@@ -151,8 +158,9 @@ class ForwardDim(C.SwanItem):
             dim += f" {elems}"
         return dim
 
-class ForwardLastDefault(C.SwanItem):
-    """**forward** construct: *last_default*
+
+class ForwardLastDefault(common.SwanItem):
+    """**forward** construct: *last_default*.
 
     *last_default* ::= **last** = *expr*
                    | **default** = *expr*
@@ -162,19 +170,19 @@ class ForwardLastDefault(C.SwanItem):
     Parameters
     ----------
     last: C.Expression (optional)
-        **last** expression
+        **last** expression.
 
     default: C.Expression (optional)
-        **default** expression
+        **default** expression.
 
     shared: C.Expression (optional)
         **last** and **default** share the same expression.
-        *shared* cannot be used with *last* or *default*
+        *shared* cannot be used with *last* or *default*.
     """
     def __init__(self,
-                 last: Optional[C.Expression] = None,
-                 default: Optional[C.Expression] = None,
-                 shared: Optional[C.Expression] = None) -> None:
+                 last: Optional[common.Expression] = None,
+                 default: Optional[common.Expression] = None,
+                 shared: Optional[common.Expression] = None) -> None:
         super().__init__()
         self._last = last
         self._default = default
@@ -185,19 +193,19 @@ class ForwardLastDefault(C.SwanItem):
 
     @property
     def is_shared(self) -> bool:
-        """True when **last** = **default** = *expr*"""
+        """True when **last** = **default** = *expr*."""
         return self._shared is not None
 
     @property
-    def last(self) -> Union[C.Expression, None]:
-        """Returns **last** expression or shared one"""
+    def last(self) -> Union[common.Expression, None]:
+        """Returns **last** expression or shared one."""
         if self._last:
             return self._last
         return self._shared
 
     @property
-    def default(self) -> Union[C.Expression, None]:
-        """Returns **default** expression or shared one"""
+    def default(self) -> Union[common.Expression, None]:
+        """Returns **default** expression or shared one."""
         if self._default:
             return self._default
         return self._shared
@@ -211,23 +219,25 @@ class ForwardLastDefault(C.SwanItem):
         return f"{last}{sep}{default}"
 
 
-class ForwardItemClause(C.SwanItem):
-    """**forward** construct: *item_clause* ::= *id* [[ : *last_default* ]]"""
+class ForwardItemClause(common.SwanItem):
+    """**forward** construct:
+
+    *item_clause* ::= *id* [[ : *last_default* ]]"""
     def __init__(self,
-                 id: C.Identifier,
+                 id: common.Identifier,
                  last_default: Optional[ForwardLastDefault] = None) -> None:
         super().__init__()
         self._id = id
         self._last_default = last_default
 
     @property
-    def id(self) -> C.Identifier:
-        """Item_clause identifier"""
+    def id(self) -> common.Identifier:
+        """Item_clause identifier."""
         return self._id
 
     @property
     def last_default(self) -> Union[ForwardLastDefault, None]:
-        """Item_clause last default"""
+        """Item_clause last default."""
         return self._last_default
 
     def __str__(self) -> str:
@@ -236,7 +246,8 @@ class ForwardItemClause(C.SwanItem):
             item_clause += f": {self.last_default}"
         return item_clause
 
-class ForwardArrayClause(C.SwanItem):
+
+class ForwardArrayClause(common.SwanItem):
     """**forward** construct:
 
     *returns_clause* ::= (( *item_clause* | *array_clause* ))
@@ -249,19 +260,21 @@ class ForwardArrayClause(C.SwanItem):
 
     @property
     def return_clause(self) -> Union[ForwardItemClause, Self]:
-        """Return *array_clause* content"""
+        """Return *array_clause* content."""
         return self._return_clause
 
     def __str__(self) -> str:
         return f"[{self.return_clause}]"
 
-class ForwardReturnItem(C.SwanItem):
-    """Base class for *returns_item*"""
+
+class ForwardReturnItem(common.SwanItem):
+    """Base class for *returns_item*."""
     def __init__(self) -> None:
         super().__init__()
 
+
 class ForwardReturnItemClause(ForwardReturnItem):
-    """**forward** construct: *returns_item* ::= *item_clause*"""
+    """**forward** construct: *returns_item* ::= *item_clause*."""
     def __init__(self,
                  item_clause: ForwardItemClause) -> None:
         super().__init__()
@@ -269,7 +282,7 @@ class ForwardReturnItemClause(ForwardReturnItem):
 
     @property
     def item_clause(self) -> ForwardItemClause:
-        """Item clause"""
+        """Item clause."""
         return self._item_clause
 
     def __str__(self) -> str:
@@ -277,69 +290,77 @@ class ForwardReturnItemClause(ForwardReturnItem):
 
 
 class ForwardReturnArrayClause(ForwardReturnItem):
-    """**forward** construct: *returns_item* ::= [[ *id* = ]] *array_clause*"""
+    """**forward** construct:
+
+    *returns_item* ::= [[ *id* = ]] *array_clause*"""
     def __init__(self,
                  array_clause: ForwardArrayClause,
-                 ret_id: Optional[C.Identifier] = None) -> None:
+                 ret_id: Optional[common.Identifier] = None) -> None:
         super().__init__()
         self._array_clause = array_clause
-        self._id = id
+        self._id = ret_id
 
     @property
     def array_clause(self) -> ForwardArrayClause:
-        """Array clause"""
+        """Array clause."""
         return self._array_clause
 
     @property
-    def return_id(self) -> Union[C.Identifier, None]:
-        """Identifier of clause, or None"""
+    def return_id(self) -> Union[common.Identifier, None]:
+        """Identifier of clause, or None."""
         return self._id
 
     def __str__(self) -> str:
         id = f"{self.return_id} = " if self.return_id else ''
         return f"{id}{self.array_clause}"
 
-class ProtectedForwardReturnItem(C.ProtectedItem, ForwardReturnItem):
-    """**forward** construct: protected *returns_item* with {syntax% ... %syntax} markup"""
+
+class ProtectedForwardReturnItem(common.ProtectedItem, ForwardReturnItem):
+    """**forward** construct: protected *returns_item* with {syntax% ... %syntax} markup."""
     def __init__(self, data: str) -> None:
         super().__init__(data)
 
+
 class ForwardState(Enum):
+    """Forward state enumeration."""
     Nothing = auto()
     Restart = auto()
     Resume = auto()
 
     @staticmethod
     def to_str(value: Self) -> str:
-        if value == ForwardArrayClause.Nothing:
+        if value == ForwardState.Nothing:
             return ''
         return value.name.lower()
 
 
-class ForwardBody(C.SwanItem):
-    """**forward** construct:
+class ForwardBody(common.SwanItem):
+    """
+    **forward** construct:
+
     fwd_body ::= [[ unless expr ]] scope_sections [[ until expr ]]
     """
     def __init__(self,
-                 body: List[C.ScopeSection],
-                 unless_expr: Optional[C.Expression] = None,
-                 until_expr: Optional[C.Expression] = None,
+                 body: List[scopes.ScopeSection],
+                 unless_expr: Optional[common.Expression] = None,
+                 until_expr: Optional[common.Expression] = None,
                  ) -> None:
         super().__init__()
         self._body = body
         self._unless_expr = unless_expr
         self._until_expr = until_expr
+        common.SwanItem.set_owner(self, body)
 
     @property
-    def body(self) -> List[C.ScopeSection]:
+    def body(self) -> List[scopes.ScopeSection]:
         return self._body
 
     @property
-    def unless_expr(self) -> Optional[C.Expression]:
+    def unless_expr(self) -> Optional[common.Expression]:
         return self._unless_expr
 
     @property
-    def until_expr(self) -> Optional[C.Expression]:
+    def until_expr(self) -> Optional[common.Expression]:
         return self._until_expr
 
     def __str__(self) -> str:
@@ -349,19 +370,19 @@ class ForwardBody(C.SwanItem):
         return f"{unless}{body}{until}"
 
 
-class ForwardExpr(C.Expression):
-    """
-    *fwd_expr* ::= **forward** [[ *luid*]][[ (( **restart** | **resume** )) ]] {{ *dim* }}+
-                   *fwd_body* **returns** ( *returns_group* )
+class Forward(common.Expression):
+    """Forward expression:
 
-    *returns_group* ::= [[ *returns_item* {{ , *returns_item* }} ]]
+    | *fwd_expr* ::= **forward** [[ *luid*]] [[ (( **restart** | **resume** )) ]] {{ *dim* }}+
+    |                *fwd_body* **returns** ( *returns_group* )
+    | *returns_group* ::= [[ *returns_item* {{ , *returns_item* }} ]]
     """
     def __init__(self,
                  state: ForwardState,
                  dimensions: List[ForwardDim],
                  body: ForwardBody,
                  returns: List[ForwardReturnItem],
-                 luid: Optional[C.Luid] = None
+                 luid: Optional[common.Luid] = None
                  ) -> None:
         super().__init__()
         self._state = state
@@ -369,6 +390,7 @@ class ForwardExpr(C.Expression):
         self._body = body
         self._returns = returns
         self._luid = luid
+        common.SwanItem.set_owner(self, body)
 
     @property
     def state(self) -> ForwardState:
@@ -387,7 +409,7 @@ class ForwardExpr(C.Expression):
         return self._returns
 
     @property
-    def luid(self) -> Union[C.Luid, None]:
+    def luid(self) -> Union[common.Luid, None]:
         return self._luid
 
     def __str__(self) -> str:

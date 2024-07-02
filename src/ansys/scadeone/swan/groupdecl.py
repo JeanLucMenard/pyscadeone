@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2023 ANSYS, Inc.
+# Copyright (c) 2022-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 
 """
@@ -11,9 +11,7 @@ import ansys.scadeone.swan.common as common
 
 
 class TypeGroupTypeExpression(common.GroupTypeExpression):
-    """Group type expression:
-
-    *group_type_expr* ::= *type_expr*
+    """Group type expression: *group_type_expr* ::= *type_expr*.
     """
     def __init__(self, type_expr: common.TypeExpression) -> None:
         super().__init__()
@@ -27,11 +25,8 @@ class TypeGroupTypeExpression(common.GroupTypeExpression):
         return str(self.type)
 
 
-class NamedGroupTypeExpression(common.SwanItem):
-    """A named group type expression, used in
-       GroupTypeExpressionList.
-
-    id : *group_type_expr*
+class NamedGroupTypeExpression(common.GroupTypeExpression):
+    """A named group type expression, used in GroupTypeExpressionList as id : *group_type_expr*.
     """
     def __init__(self,
                  group_label: common.Identifier,
@@ -53,11 +48,12 @@ class NamedGroupTypeExpression(common.SwanItem):
 
 
 class GroupTypeExpressionList(common.GroupTypeExpression):
-    """Group list made of positional, then named group type expressions.
+    """Group list made of positional items followed by named items.
+    Each item is a group type expression.
 
-    - *group_type_expr* ::= ( *group_type_expr* {{ , *group_type_expr* }}
-      {{ , id : *group_type_expr* }} )
-    - *group_type_expr* ::=  ( id : *group_type_expr* {{ , id : *group_type_expr* }} )
+    | *group_type_expr* ::= ( *group_type_expr* {{ , *group_type_expr* }}
+    |                        {{ , id : *group_type_expr* }} )
+    | | ( id : *group_type_expr* {{ , id : *group_type_expr* }} )
     """
     def __init__(self,
                  positional: List[common.GroupTypeExpression],
@@ -68,23 +64,29 @@ class GroupTypeExpressionList(common.GroupTypeExpression):
 
     @property
     def positional(self) -> Generator[common.GroupTypeExpression, None, None]:
+        """Return positional group items"""
         return (p for p in self._positional)
 
     @property
     def named(self) -> Generator[NamedGroupTypeExpression, None, None]:
+        """Return named group items"""
         return (p for p in self._named)
 
+    @property
+    def items(self) -> Generator[common.GroupTypeExpression, None, None]:
+        """Returns all items"""
+        for pos in self.positional:
+            yield pos
+        for named in self.named:
+            yield named
+
     def __str__(self):
-        items = [str(p) for p in self.positional]
-        items.extend([str(n) for n in self.named])
-        items_str = ', '.join(items)
+        items_str = ', '.join(str(item) for item in self.items)
         return f"({items_str})"
 
 
 class GroupDecl(common.Declaration):
-    """Group declaration
-
-    *group_decl* ::= id = *group_type_expr*
+    """Group declaration with an id and a type.
     """
     def __init__(self,
                  group_id: common.Identifier,

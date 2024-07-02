@@ -123,6 +123,7 @@ ENV/
 env.bak/
 venv.bak/
 .lvenv
+smoke_env/
 
 # Spyder project settings
 .spyderproject
@@ -170,6 +171,7 @@ doc/source/api/_autosummary/
 pyscadeone.log
 
 .fake
-logs/pytest-logs.txt
-doc/logs/pytest-logs.txt
+**/logs/pytest-logs.txt
 TODOes.md
+
+bugs/

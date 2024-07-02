@@ -1,0 +1,2 @@
+#!/bin/sh
+cp ../ANSYS.SONE.IDE/src/ScadeOne/Infrastructure/Infrastructure.Services.Serialization.BNF.Parsing/bin/Debug_ProdModules/ANSYS.SONE.Infrastructure.Services.Serialization.BNF.Parsing.dll src/ansys/scadeone/dlls/

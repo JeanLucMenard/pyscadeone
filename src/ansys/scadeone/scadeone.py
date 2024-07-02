@@ -1,43 +1,37 @@
-# Copyright (c) 2022-2023 ANSYS, Inc.
+# Copyright (c) 2022-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 
 # doc style is numpy
 from pathlib import Path
 from typing import List, Union
 
+from ansys.scadeone import __version__
 from ansys.scadeone.common.logger import LOGGER
 from ansys.scadeone.project import Project
-from ansys.scadeone.common.assets import ProjectAsset, ProjectFile
+from ansys.scadeone.common.storage import ProjectStorage, ProjectFile
 
 class IScadeOne:
     """Interface class"""
     @property
     def logger(self):
-        pass
+        return None
+
+    @property
+    def version(self) -> str:
+        return ""
 
 class ScadeOne(IScadeOne):
-    """Initializes Scade One
-
-    Parameters
-    ----------
-    specified_version : str, optional
-        Version of Scade One to use. The default is ``None``, in which case the
-        active setup or latest installed version is used.
-    close_on_exit : bool, optional
-        Whether to close Scade One on exit. The default is ``True``.
+    """Scade One application API.
     """
 
-    def __init__(self,
-                 *,
-                 specified_version=None,
-                 close_on_exit=True,
-                 installation=None):
+    def __init__(self):
         self._logger = LOGGER
         self._projects = []
-        self._installation = None \
-            if installation is None \
-            else Path(installation)
-        pass
+
+    @property
+    def version(self) -> str:
+        "API version."
+        return __version__
 
     @property
     def logger(self):
@@ -45,58 +39,57 @@ class ScadeOne(IScadeOne):
 
     # For context management
     def __enter__(self):
-        pass
+        self.logger.info("Entering context")
+        return self
 
     def __exit__(self, exc_type, exc_value, exc_tb):
-        pass
+        if exc_type:
+            msg = f"Exiting on exception {exc_type}"
+            if exc_value:
+                msg += f" with value {exc_value}"
+            self.logger.exception(msg)
+        self.close()
+        # propagate exception
+        return False
     # end context management
 
     def close(self):
-        """Close application, releasing any connection
+        """Close application, releasing any connection.
         """
         pass
 
-    # TODO: Define what is a storage, instead of a file
-    def load_project(self, asset: Union[ProjectAsset, str, Path]) -> Union[Project, None]:
-        """Load a Scade One project
+    def __del__(self):
+        self.close()
+
+    def load_project(self, storage: Union[ProjectStorage, str, Path]) -> Union[Project, None]:
+        """Load a Scade One project.
 
         Parameters
         ----------
-        asset : Union[ProjectAsset, Path, str]
-            project asset containing project data
+        storage : Union[ProjectAsset, Path, str]
+            Storage containing project data.
 
         Returns
         -------
-        Project|
-            Project object, or None file does not exist
+        Project|None
+            Project object, or None if file does not exist.
         """
-        if not isinstance(asset, ProjectAsset):
-            asset = ProjectFile(asset)
-        if not asset.exists():
-            self.logger.error(f"Project does not exist {asset.source}")
+        if not isinstance(storage, ProjectStorage):
+            storage = ProjectFile(storage)
+        if not storage.exists():
+            self.logger.error(f"Project does not exist {storage.source}")
             return None
-        project = Project(self, asset)
+        project = Project(self, storage)
         self._projects.append(project)
         return project
 
     @property
     def projects(self) -> List[Project]:
-        """Return the loaded projects
+        """Return the loaded projects.
 
         Returns
         -------
         List[Project]
-           Loaded projects
+           Loaded projects.
         """
         return self._projects
-
-    @property
-    def code_generator(self) -> Path:
-        """Code generator path
-
-        Returns
-        -------
-        str
-            _description_
-        """
-        return None

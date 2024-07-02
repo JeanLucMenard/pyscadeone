@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2023 ANSYS, Inc.
+# Copyright (c) 2022-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 import argparse
 import sys
@@ -47,7 +47,8 @@ def main():
                                help="load & run module")
     script_parser.add_argument('--path',
                                action='append',
-                               help="module path. Several --path can be given",
+                               help="module path, inserted at beginning of sys.path." \
+                                + " Several --path can be given.",
                                dest='module_path')
 
     # Parsing
@@ -56,15 +57,17 @@ def main():
     print(args)
 
     # Scripting
-    if args.script:
+    if 'script' in args:
         script = Path(args.script).with_suffix('')
         args.module = script.name
         args.module_path = [str(script.parent)]
-    if args.module:
-        if args.module_path:
-            sys.path.extend(args.module_path)
+
+    if 'module' in args:
+        if 'module_path' in args:
+            for path in args.module_path:
+                sys.path.insert(0, path)
         try:
-            import_module(args.module)
+            mod = import_module(args.module)
             exit(0)
         except Exception as e:
             print(str(e))

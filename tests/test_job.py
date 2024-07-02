@@ -1,7 +1,7 @@
 import pytest
 
 from ansys.scadeone import ScadeOne
-from ansys.scadeone.common.assets import ProjectFile
+from ansys.scadeone.common.storage import ProjectFile
 
 
 class TestModel:

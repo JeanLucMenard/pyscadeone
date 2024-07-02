@@ -19,9 +19,9 @@ CC = app.load_project(asset)
 projects = app.projects
 assert len(projects) == 2
 assert (
-    cast(ProjectFile, projects[0].asset).source
+    cast(ProjectFile, projects[0].storage).source
     ==                                              # noqa: W504
-    cast(ProjectFile, projects[1].asset).source)
+    cast(ProjectFile, projects[1].storage).source)
 
 # %%
 model = CC.model
@@ -29,14 +29,14 @@ model = CC.model
 import ansys.scadeone.swan as S
 
 def op_filter(obj: S.GlobalDeclaration):
-    if isinstance(obj, S.UserOperator):
+    if isinstance(obj, S.Operator):
         return str(obj.identifier) == 'Regulation'
     return False
 
 decl = model.find_declaration(op_filter)
 
 # %%
-op = cast(S.UserOperator, decl)
+op = cast(S.Operator, decl)
 first_input = str(op.inputs[0].identifier)
 
 assert first_input == 'CruiseSpeed'

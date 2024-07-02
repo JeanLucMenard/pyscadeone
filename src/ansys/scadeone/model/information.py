@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2023 ANSYS, Inc.
+# Copyright (c) 2023-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 
 """
@@ -79,8 +79,13 @@ class Information:
 
     @property
     def model_tree(self) -> ModelTree:
-        "ModelTree information"
+        """ModelTree information"""
 
         if ModelTree.Key in self._info:
             return ModelTree(self._info[ModelTree.Key])
         return None
+
+    @property
+    def info(self) -> dict:
+        """Return information dictionary"""
+        return self._info

@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2023 ANSYS, Inc.
+# Copyright (c) 2023-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 
 from .common import * 
@@ -10,7 +10,8 @@ from .groupdecl import *
 from .instances import *
 from .forward import *
 from .modules import *
-from .useroperator import *
+from .operator import *
+from .scopes import *
 from .scopesections import *
 from .typedecl import *
 from .variable import *

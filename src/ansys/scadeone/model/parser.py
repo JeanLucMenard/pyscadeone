@@ -1,10 +1,10 @@
-# Copyright (c) 2023-2023 ANSYS, Inc.
+# Copyright (c) 2023-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 from abc import ABC, abstractmethod
 from typing import Union
 from typing_extensions import Self
 
-from ansys.scadeone.common.assets import SwanCode
+from ansys.scadeone.common.storage import SwanStorage
 import ansys.scadeone.swan as S
 from .information import Information
 
@@ -28,16 +28,16 @@ class Parser(ABC):
     _SwanSource = None
 
     @classmethod
-    def get_source(cls) -> SwanCode:
+    def get_source(cls) -> SwanStorage:
         return cls._SwanSource
 
     @classmethod
-    def set_source(cls, swan: SwanCode) -> SwanCode:
+    def set_source(cls, swan: SwanStorage) -> SwanStorage:
         cls._SwanSource = swan
 
     @abstractmethod
-    def module_body(self, source: SwanCode) -> (S.ModuleBody, Information):
-        """ Parse a Swan module from a SwanCode object
+    def module_body(self, source: SwanStorage) -> tuple[S.ModuleBody, Information]:
+        """ Parse a Swan module from a SwanStorage object
 
             The *content()* method is called to get the code.
 
@@ -45,7 +45,7 @@ class Parser(ABC):
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Swan module (.swan)
 
         Returns
@@ -58,8 +58,8 @@ class Parser(ABC):
         pass
 
     @abstractmethod
-    def module_interface(self, source: SwanCode) -> (S.ModuleInterface, Information):
-        """ Parse a Swan interface from a SwanCode object.
+    def module_interface(self, source: SwanStorage) -> tuple[S.ModuleInterface, Information]:
+        """ Parse a Swan interface from a SwanStorage object.
 
             The *content()* method is called to get the code.
 
@@ -67,7 +67,7 @@ class Parser(ABC):
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Swan interface (.swani)
 
         Returns
@@ -80,13 +80,13 @@ class Parser(ABC):
         pass
 
     @abstractmethod
-    def declaration(self, source: SwanCode) -> S.Declaration:
+    def declaration(self, source: SwanStorage) -> S.Declaration:
         """Parse a Swan declaration:
           type, const, sensor, group, use, operator (signature or with body).
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Single Swan declaration
 
         Returns
@@ -97,12 +97,12 @@ class Parser(ABC):
         pass
 
     @abstractmethod
-    def equation(self, source: SwanCode) -> S.equations:
+    def equation(self, source: SwanStorage) -> S.equations:
         """Parse a Swan equation.
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Swan equation text
 
         Returns
@@ -113,12 +113,12 @@ class Parser(ABC):
         pass
 
     @abstractmethod
-    def expression(self, source: SwanCode) -> S.Expression:
+    def expression(self, source: SwanStorage) -> S.Expression:
         """Parse a Swan expression
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Swan expression text
 
         Returns
@@ -128,7 +128,7 @@ class Parser(ABC):
         """
 
     @abstractmethod
-    def scope_section(self, source: SwanCode) -> S.ScopeSection:
+    def scope_section(self, source: SwanStorage) -> S.ScopeSection:
         """Parse a Swan scope section
 
         Parameters
@@ -144,12 +144,12 @@ class Parser(ABC):
         pass
 
     @abstractmethod
-    def op_expr(self, source: SwanCode) -> S.OperatorExpression:
+    def op_expr(self, source: SwanStorage) -> S.OperatorExpression:
         """Parse a Swan operator expression
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Swan code for operator expression
 
         Returns
@@ -160,14 +160,14 @@ class Parser(ABC):
         pass
 
     @abstractmethod
-    def operator_block(self, source: SwanCode) -> Union[S.Operator, S.OperatorExpression]:
+    def operator_block(self, source: SwanStorage) -> Union[S.OperatorBase, S.OperatorExpression]:
         """Parse a Swan operator block
 
         *operator_block* ::= *operator* | *op_expr*
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Swan code for operator block
 
         Returns
@@ -178,17 +178,17 @@ class Parser(ABC):
         pass
 
     @abstractmethod
-    def user_operator(self, source: SwanCode) -> S.UserOperator:
-        """Parse a Swan user operator
+    def operator(self, source: SwanStorage) -> S.Operator:
+        """Parse a Swan operator
 
          Parameters
         ----------
-        source : SwanCode
-            Swan user operator text
+        source : SwanStorage
+            Swan operator text
 
         Returns
         -------
-        S.UserOperator
-            Instance of the user operator
+        S.Operator
+            Instance of the operator
         """
         pass

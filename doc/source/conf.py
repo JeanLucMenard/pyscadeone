@@ -1,4 +1,6 @@
 """Sphinx documentation configuration file."""
+# cSpell:disable
+
 from datetime import datetime
 import sys
 from pathlib import Path
@@ -8,6 +10,21 @@ if not src.exists():
     raise Exception(f"Cannot find sources: {src}")
 sys.path.append(str(src))
 
+
+# Selection of documentation parts
+config = {}
+config['full_guide'] = False
+config['guide_exclude'] = [
+    'user_guide/coverage.rst',
+    'user_guide/testing.rst',
+    'user_guide/verifier.rst',
+    'user_guide/toolbox.rst',
+]
+config['clock'] = False
+config['clock_exclude'] = ['api/language/clock.rst']
+
+
+
 from ansys.scadeone import __version__ # noqa
 from ansys_sphinx_theme import ansys_favicon, pyansys_logo_black # noqa
 
@@ -15,7 +32,7 @@ from ansys_sphinx_theme import ansys_favicon, pyansys_logo_black # noqa
 project = "PyScadeOne"
 copyright = f"(c) {datetime.now().year} ANSYS, Inc. All rights reserved"
 author = "ANSYS, Inc."
-release = version = __version__
+release = version = __version__[:-2]
 
 
 # Copy button customization ---------------------------------------------------
@@ -24,14 +41,42 @@ copybutton_prompt_text = r">>> ?|\.\.\. "
 copybutton_prompt_is_regexp = True
 
 # Sphinx extensions
+
+# UML designs
+plantweb = True
+if plantweb:
+    ## Using plantuml server online
+    uml_extension = "plantweb.directive"
+else:
+    ## Using plantuml on host
+    uml_extension = "sphinxcontrib.plantuml"
+    plantumljar = "C:/Program Files/Plantuml/plantuml.jar"
+    plantuml = f'java -jar "{plantumljar}"'
+    plantuml_output_format = 'svg'
+
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx.ext.autosectionlabel",
     "numpydoc",
     "sphinx.ext.intersphinx",
     "sphinx_copybutton",
-    "sphinx.ext.inheritance_diagram"
+    "sphinx.ext.inheritance_diagram",
+    "sphinx_design",
+    "sphinx_jinja",
+    uml_extension
 ]
+
+
+exclude_patterns = []
+if not config['full_guide']:
+    exclude_patterns.extend(config['guide_exclude'])
+if not config['clock']:
+    exclude_patterns.extend(config['clock_exclude'])
+
+# Make sure the target is unique for auto label
+# see: https://docs.readthedocs.io/en/stable/guides/cross-referencing-with-sphinx.html
+autosectionlabel_prefix_document = True
 
 # Intersphinx mapping
 intersphinx_mapping = {
@@ -81,6 +126,8 @@ master_doc = "index"
 
 inherited_members = True
 
+toc_object_entries = False
+
 # use the default pyansys logo
 html_logo = pyansys_logo_black
 html_favicon = ansys_favicon
@@ -100,9 +147,23 @@ html_theme_options = {
 # static path
 html_static_path = ["_static"]
 
+# These paths are either relative to html_static_path
+# or fully qualified paths (eg. https://...)
+html_css_files = [
+    'custom.css',
+]
+
 autodoc_default_options = {
     'members': True,
     'member-order': 'groupwise',
     # 'undoc-members': True,
-    'exclude-members': '__weakref__'
+    'exclude-members': '__weakref__',
+    'inherited-members': True,
+    'show-inheritance': True
+}
+
+# Jinja context for guide
+jinja_contexts = {
+    'guide_ctx': {'full_guide': config['full_guide']},
+    'clock_ctx': {'clock': config['clock']}
 }

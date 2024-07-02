@@ -18,17 +18,18 @@
             "scope": "workspace"
         }
     ],
-    "words": [
-    ],
+    "words": [],
     "ignoreWords": [
+        "IsBAroba",
+        "OPEXPR",
+        "VerifExpr",
         "descr",
         "elems",
-        "IsBAroba",
+        "keepends",
         "levelname",
-        "OPEXPR",
         "predef",
         "prio",
-        "texpr",
-        "VerifExpr"
+        "softwareengineering",
+        "texpr"
     ]
 }

@@ -1,9 +1,9 @@
-# Copyright (c) 2022-2023 ANSYS, Inc.
+# Copyright (c) 2022-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 """
 Logging
 -------
-The `ScadeOneLogger`class creates a singleton which is accessed using
+The `ScadeOneLogger` class creates a singleton which is accessed using
 `logger.LOG` object.
 
 The logger is part of the `ScadeOne` application instance.

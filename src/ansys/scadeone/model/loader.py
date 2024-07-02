@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2023 ANSYS, Inc.
+# Copyright (c) 2023-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 """
 Parser
@@ -24,7 +24,7 @@ from ANSYS \
      .Services \
      .Serialization \
      .BNF\
-     .Parsing import Reader # type:ignore
+     .Parsing import Reader, ParserTools # type:ignore
 
 from ANSYS.SONE.Core.Toolkit.Logging import ILogger # type:ignore
 
@@ -38,14 +38,17 @@ from .pyofast import (
     scopeSectionOfAst,
     operatorExprOfAst,
     operatorBlockOfAst,
-    userOperatorOfAst
+    operatorOfAst
 )
 from .information import Information
 
 from .parser import Parser
 
-from ansys.scadeone.common.assets import SwanCode
+from ansys.scadeone.common.storage import SwanStorage
 import ansys.scadeone.swan as S
+
+SwanVersion = ParserTools.SwanVersion
+SwanTestVersion = ParserTools.SwanTestVersion
 
 class ParserLogger(ILogger):
     """Logger class for the parser. An instance of the
@@ -110,6 +113,10 @@ class SwanParser(Parser):
         if string_opt is not None:
             try:
                 data = json.loads(string_opt.Value)
+                if not isinstance(data, dict):
+                    self._logger.Error("SwanLoader",
+                                       "Expecting a JSON dictionary")
+                    data = None
             except Exception as e:
                 self._logger.Error("SwanLoader",
                                    f"Cannot load JSON information: {e}")
@@ -117,18 +124,14 @@ class SwanParser(Parser):
         else:
             data = None
 
-        if not isinstance(data, dict):
-            self._logger.Error("SwanLoader",
-                                f"Expecting a JSON dictionary")
-            data = None
         return Information(data)
 
-    def _parse(self, rule_fn, swan: SwanCode):
+    def _parse(self, rule_fn, swan: SwanStorage):
         """Call F# parser with a given rule
 
         Args:
             rule_fn: parser rule function
-            swan (SwanCode): Swan code to pare
+            swan (SwanStorage): Swan code to pare
 
         Raises:
             ScadeOneException: in case of parser error
@@ -139,7 +142,7 @@ class SwanParser(Parser):
         # save current parser for pyofast methods
         Parser.set_current_parser(self)
         Parser.set_source(swan)
-        ast = None
+
         try:
             result = rule_fn(swan.source, swan.content(), self._logger)
         except Reader.ParseError as e:
@@ -148,8 +151,8 @@ class SwanParser(Parser):
             raise ScadeOneException(f"Internal: {e}")
         return result
 
-    def module_body(self, source: SwanCode) -> (S.ModuleBody, Information):
-        """ Parse a Swan module from a SwanCode object.
+    def module_body(self, source: SwanStorage) -> tuple[S.ModuleBody, Information]:
+        """ Parse a Swan module from a SwanStorage object.
 
             The *content()* method is called to get the code.
 
@@ -157,7 +160,7 @@ class SwanParser(Parser):
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Swan module (.swan)
 
         Returns
@@ -169,8 +172,8 @@ class SwanParser(Parser):
         return (moduleOfAst(source.name, result.Item1),
                 self._get_json(result.Item2))
 
-    def module_interface(self, source: SwanCode) -> (S.ModuleInterface, Information):
-        """ Parse a Swan interface from a SwanCode object.
+    def module_interface(self, source: SwanStorage) -> tuple[S.ModuleInterface, Information]:
+        """ Parse a Swan interface from a SwanStorage object.
 
             The *content()* method is called to get the code.
 
@@ -178,7 +181,7 @@ class SwanParser(Parser):
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Swan interface (.swani)
 
         Returns
@@ -190,13 +193,13 @@ class SwanParser(Parser):
         return (interfaceOfAst(source.name, result.Item1),
                 self._get_json(result.Item2))
 
-    def declaration(self, source: SwanCode) -> S.Declaration:
+    def declaration(self, source: SwanStorage) -> S.Declaration:
         """Parse a Swan declaration:
           type, const, sensor, group, use, operator (signature or with body).
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Single Swan declaration
 
         Returns
@@ -207,12 +210,12 @@ class SwanParser(Parser):
         ast = self._parse(Reader.parse_declaration, source)
         return declarationOfAst(ast)
 
-    def equation(self, source: SwanCode) -> S.Equation:
+    def equation(self, source: SwanStorage) -> S.Equation:
         """Parse a Swan equation.
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Swan equation text
 
         Returns
@@ -223,12 +226,12 @@ class SwanParser(Parser):
         ast = self._parse(Reader.parse_equation, source)
         return equationOfAst(ast)
 
-    def expression(self, source: SwanCode) -> S.expressions:
+    def expression(self, source: SwanStorage) -> S.expressions:
         """Parse a Swan expression
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Swan expression text
 
         Returns
@@ -239,7 +242,7 @@ class SwanParser(Parser):
         ast = self._parse(Reader.parse_expr, source)
         return expressionOfAst(ast)
 
-    def scope_section(self, source: SwanCode) -> S.ScopeSection:
+    def scope_section(self, source: SwanStorage) -> S.ScopeSection:
         """Parse a Swan scope section
 
         Parameters
@@ -255,12 +258,12 @@ class SwanParser(Parser):
         ast = self._parse(Reader.parse_scope_section, source)
         return scopeSectionOfAst(ast)
 
-    def op_expr(self, source: SwanCode) -> S.OperatorExpression:
+    def op_expr(self, source: SwanStorage) -> S.OperatorExpression:
         """Parse a Swan operator expression
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Swan code for operator expression
 
         Returns
@@ -271,36 +274,36 @@ class SwanParser(Parser):
         ast = self._parse(Reader.parse_op_expr, source)
         return operatorExprOfAst(ast)
 
-    def operator_block(self, source: SwanCode) -> Union[S.Operator, S.OperatorExpression]:
+    def operator_block(self, source: SwanStorage) -> Union[S.OperatorBase, S.OperatorExpression]:
         """Parse a Swan operator block
 
         *operator_block* ::= *operator* | *op_expr*
 
         Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Swan code for operator block
 
         Returns
         -------
-        Union[S.Operator, S.OperatorExpression]
+        Union[S.OperatorBase, S.OperatorExpression]
             Instance of the *operator* or *op_expr*
         """
         ast = self._parse(Reader.parse_operator_block, source)
         return operatorBlockOfAst(ast)
 
-    def user_operator(self, source: SwanCode) -> S.UserOperator:
+    def operator(self, source: SwanStorage) -> S.Operator:
         """Parse a Swan user operator
 
          Parameters
         ----------
-        source : SwanCode
+        source : SwanStorage
             Swan user operator text
 
         Returns
         -------
-        S.UserOperator
+        S.Operator
             Instance of the user operator
         """
         ast = self._parse(Reader.parse_user_operator, source)
-        return userOperatorOfAst(ast)
+        return operatorOfAst(ast)

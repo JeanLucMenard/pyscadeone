@@ -1,4 +1,4 @@
-# Copyright (c) 2023-2023 ANSYS, Inc.
+# Copyright (c) 2023-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 
 """
@@ -15,7 +15,8 @@ class TypeDefinition(common.SwanItem):
 
 
 class TypeDecl(common.Declaration):
-    """*type_decl* ::= id [[ = *type_def* ]]"""
+    """Type declaration with its name and optional definition:
+       *type_decl* ::= id [[ = *type_def* ]]."""
     def __init__(self,
                  id: common.Identifier,
                  type_definition: Optional[TypeDefinition] = None) -> None:
@@ -36,7 +37,7 @@ class TypeDecl(common.Declaration):
 
 
 class ExprTypeDefinition(TypeDefinition):
-    """*type_def* ::= *type_expr*"""
+    """Type definition as a type expression: *type_def* ::= *type_expr*."""
     def __init__(self, type_expr: common.TypeExpression) -> None:
         super().__init__()
         self._type = type_expr
@@ -50,7 +51,7 @@ class ExprTypeDefinition(TypeDefinition):
 
 
 class EnumTypeDefinition(TypeDefinition):
-    """*type_def* ::= **enum** { id {{ , id }} }"""
+    """Type definition as an enumeration: *type_def* ::= **enum** { id {{ , id }} }."""
     def __init__(self, tags: List[common.Identifier]) -> None:
         super().__init__()
         self._tags = tags
@@ -63,11 +64,13 @@ class EnumTypeDefinition(TypeDefinition):
         tags_str = [str(t) for t in self.tags]
         return f"enum {{{', '.join(tags_str)}}}"
 
-class VariantTypeExpr(common.SwanItem):
-    """Variant:
-    - *variant* ::= id *variant_type_expr*
-    - *variant_type_expr* ::= { [[ *type_expr* ]] }
-    - *variant_type_expr* ::= *struct_texpr*"""
+class VariantTypeComponent(common.SwanItem):
+    """Variant type definition component:
+
+    | *variant* ::= id *variant_type_expr*
+    | *variant_type_expr* ::= { [[ *type_expr* ]] }
+    |   |  *struct_texpr*
+    """
     def __init__(self,
                  tag: common.Identifier,
                  type_expr: Optional[common.TypeExpression] = None) -> None:
@@ -84,7 +87,7 @@ class VariantTypeExpr(common.SwanItem):
         return self._type
 
     def __str__(self) -> str:
-        if isinstance(self.type, StructTypeExpression):
+        if isinstance(self.type, StructTypeDefinition):
             type_str = str(self.type)
         elif self.type:
             type_str = f"{{ {self.type} }}"
@@ -94,8 +97,8 @@ class VariantTypeExpr(common.SwanItem):
 
 
 class VariantTypeDefinition(TypeDefinition):
-    """*type_def* ::= *variant* {{ | *variant* }}"""
-    def __init__(self, tags: List[VariantTypeExpr]) -> None:
+    """Type definition as a variant: *type_def* ::= *variant* {{ | *variant* }}."""
+    def __init__(self, tags: List[VariantTypeComponent]) -> None:
         super().__init__()
         self._tags = tags
 
@@ -107,25 +110,77 @@ class VariantTypeDefinition(TypeDefinition):
         v_str = [str(v) for v in self.tags]
         return " | ".join(v_str)
 
-class PredefinedTypeExpr(common.TypeExpression):
-    """Predefined types"""
-    def __init__(self, predef: common.PredefinedTypes) -> None:
+class PredefinedType(common.TypeExpression):
+    """Predefined types."""
+    def __init__(self) -> None:
         super().__init__()
-        self._predef = predef
 
     @property
-    def predefined(self):
-        return self._predef
+    def is_predefined(self) -> bool:
+        "True if type is predefined"
+        return True
+
+    @property
+    def name(self) -> str:
+        """Name of a predefined type from its class."""
+        return self.__class__.__name__[:-4].lower()
 
     def __str__(self) -> str:
-        return common.PredefinedTypes.to_str(self.predefined)
+        return self.name
+
+
+class BoolType(PredefinedType):
+    """**bool** type."""
+
+
+class CharType(PredefinedType):
+    """**char** type."""
+
+
+class Int8Type(PredefinedType):
+    """**int8** type."""
+
+
+class Int16Type(PredefinedType):
+    """**int16** type."""
+
+
+class Int32Type(PredefinedType):
+    """**int32** type."""
+
+
+class Int64Type(PredefinedType):
+    """**int64** type."""
+
+class Uint8Type(PredefinedType):
+    """**uint8** type."""
+
+
+class Uint16Type(PredefinedType):
+    """**uin16** type."""
+
+
+class Uint32Type(PredefinedType):
+    """**uint32** type."""
+
+
+class Uint64Type(PredefinedType):
+    """**uint64** type."""
+
+
+class Float32Type(PredefinedType):
+    """**float32** type."""
+
+
+class Float64Type(PredefinedType):
+    """**float64** type."""
 
 
 class SizedTypeExpression(common.TypeExpression):
     """Type with a size expression:
 
-    - type_expr ::= signed << expr >>
-    - type_expr ::= unsigned << expr >>
+    | *type_expr* ::= **signed** << *expr* >>
+    |   | **unsigned** << *expr* >>
 
     """
     def __init__(self, size: common.Expression, is_signed: bool) -> None:
@@ -147,15 +202,15 @@ class SizedTypeExpression(common.TypeExpression):
         else:
             return f"unsigned <<{self.size}>>"
 
-class AliasTypeExpression(common.TypeExpression):
-    """ *type_expr* ::= *path_id*"""
+class TypeReferenceExpression(common.TypeExpression):
+    """Type reference to another type: *type_expr* ::= *path_id*."""
     def __init__(self, path: common.PathIdentifier) -> None:
         super().__init__()
         self._path = path
 
     @property
     def alias(self) -> common.PathIdentifier:
-        """Return aliased type name"""
+        """Returns aliased type name."""
         return self._path
 
     def __str__(self) -> str:
@@ -172,7 +227,7 @@ class VariableTypeExpression(common.TypeExpression):
 
     @property
     def name(self) -> common.Identifier:
-        """Name of variable"""
+        """Name of variable."""
         return self._var
 
     def __str__(self) -> str:
@@ -180,7 +235,7 @@ class VariableTypeExpression(common.TypeExpression):
 
 
 class StructField(common.SwanItem):
-    """Structure field, as ID: *type_expr*"""
+    """Structure field as: ID **:** *type_expr*."""
     def __init__(self,
                  field_id: common.Identifier,
                  field_type: common.TypeExpression) -> None:
@@ -190,27 +245,27 @@ class StructField(common.SwanItem):
 
     @property
     def field(self) -> common.Identifier:
-        """Field name"""
+        """Field name."""
         return self._id
 
     @property
     def type(self) -> common.TypeExpression:
-        """Field type"""
+        """Field type."""
         return self._type
 
     def __str__(self) -> str:
         return f"{self.field}: {self.type}"
 
 
-class StructTypeExpression(common.TypeExpression):
-    """Structure: *type_expr* ::= { *field_decl* {{, *field_decl*}}}"""
+class StructTypeDefinition(TypeDefinition):
+    """Type definition as a structure: *type_expr* ::= { *field_decl* {{, *field_decl*}}}."""
     def __init__(self, fields: List[StructField]) -> None:
         super().__init__()
         self._fields = fields
 
     @property
     def fields(self) -> List[StructField]:
-        """List of fields"""
+        """List of fields."""
         return self._fields
 
     def __str__(self) -> str:
@@ -218,7 +273,7 @@ class StructTypeExpression(common.TypeExpression):
         return f"{{{', '.join(f_str)}}}"
 
 class ArrayTypeExpression(common.TypeExpression):
-    """Array type: *type_expr* := *type_expr* ^ *expr*"""
+    """Array type expression: *type_expr* := *type_expr* ^ *expr*."""
     def __init__(self,
                  array_type: common.TypeExpression,
                  array_size: common.Expression) -> None:
@@ -228,20 +283,20 @@ class ArrayTypeExpression(common.TypeExpression):
 
     @property
     def size(self) -> common.Expression:
-        """Array size"""
+        """Array size."""
         return self._size
 
     @property
     def type(self) -> common.TypeExpression:
-        """Array cell type"""
+        """Array cell type."""
         return self._type
 
     def __str__(self) -> str:
-        return f"{self.type}^{self.size}"
+        return f"{self.type} ^ {self.size}"
 
 
 class ProtectedTypeExpr(common.TypeExpression, common.ProtectedItem):
-    """Protected type expression, i.e. saved as string if
-       syntactically incorrect"""
+    """Protected type expression, i.e., saved as string if
+       syntactically incorrect."""
     def __init__(self, value: str) -> None:
         common.ProtectedItem.__init__(self, value)

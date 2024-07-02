@@ -7,10 +7,8 @@ This section contains the classes related to Scade One projects.
    
     from ansys.scadeone import ScadeOne, ProjectFile
     
-    with ScadeOne(specified_version="1.0") as app:
-      proj_file = ProjectFile("project.sproj")
-      app.load_project(proj_file)
-      project = app.project()
+    with ScadeOne() as app:
+      project = app.load_project("project.sproj")
       ...
 
 Project API Documentation
@@ -20,23 +18,37 @@ This section gives the API of a project.
 
 .. currentmodule:: ansys.scadeone.project 
 
+Projects are used by :py:class:`ScadeOne` objects, and projects have a link to 
+the application. To deal with the cross-links, we use the :py:class:`IProject` interface [#]_.
+
+
+
+.. autoclass:: IProject
+
 .. autoclass:: Project
 
 
-Project Assets
---------------
- A project can manipulate different assets.
+Project Items
+-------------
 
- .. currentmodule:: ansys.scadeone.common.assets
+A project can manipulate different items saved using the **storage** module.
+The API handles projects and Swan sources (*.swan* and *.swani* files).
 
-Project Asset
-~~~~~~~~~~~~~
+Project File
+~~~~~~~~~~~~
+
+.. currentmodule:: ansys.scadeone.common.storage
 
 .. autoclass:: ProjectFile
    :inherited-members:
 
-Swan Code Asset
-~~~~~~~~~~~~~~~
+Swan Code
+~~~~~~~~~
 
 .. autoclass:: SwanFile
    :inherited-members:
+
+.. rubric:: Footnotes
+
+
+.. [#] See *How to avoid bidirectional class and module dependencies*  `softwareengineering.stackexchange.com <https://softwareengineering.stackexchange.com/questions/369146/how-to-avoid-bidirectional-class-and-module-dependenciessoftwareengineering.stackexchange.com>`_ 

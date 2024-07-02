@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2023 ANSYS, Inc.
+# Copyright (c) 2022-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 """
 This module contains the classes for expressions
@@ -11,11 +11,21 @@ import ansys.scadeone.swan.common as C
 from ansys.scadeone.common.exception import ScadeOneException
 
 class UnaryOp(Enum):
-    """Unary operators"""
+    """Unary operators:
+
+       - arithmetic operators
+       - logical operators
+       - Unit delay operator
+    """
+    #: (**-**) Unary minus.
     Minus = auto()
+    #: (**+**) Unary plus.
     Plus = auto()
+    #: (**lnot**) Bitwise not.
     Lnot = auto()
+    #: (**not**) Logical not.
     Not = auto()
+    #: (**pre**) Unit delay.
     Pre = auto()
 
     @staticmethod
@@ -33,32 +43,62 @@ class UnaryOp(Enum):
 
 
 class BinaryOp(Enum):
-    """Binary operators"""
+    """Binary operators:
+
+    - arithmetic operators
+    - relational operators
+    - logical operators
+    - bitwise operators
+    - Initial value, initialed unit delay
+    - Concat
+    """
+    #: (+) Addition.
     Plus = auto()
+    #: (-) Subtraction.
     Minus = auto()
+    #: (*) Multiplication.
     Mult = auto()
+    #: (/) Division.
     Slash = auto()
+    #: (**mod**) Modulo.
     Mod = auto()
-    # Bitwise Arithmetic
-    Land = auto()
-    Lor = auto()
-    Lxor = auto()
-    Lsl = auto()
-    Lsr = auto()
     #  Relational Expressions
+    #: (=) Equal.
     Equal = auto()
+    #: (<>) Different.
     Diff = auto()
+    #: (<) Less than.
     Lt = auto()
+    #: (>) Greater than.
     Gt = auto()
+    #: (<=) Less than or equal to.
     Leq = auto()
+    #: (>=) Greater than or equal to.
     Geq = auto()
     #  Boolean Expressions
+    #: (**and**) Logical and.
     And = auto()
+    #: (**or**) Logical or.
     Or = auto()
+    #: (**xor**) Logical exclusive or.
     Xor = auto()
+    # Bitwise Arithmetic
+    #: (**land**) Bitwise and.
+    Land = auto()
+    #: (**lor**) Bitwise or.
+    Lor = auto()
+    #: (**lxor**) Bitwise exclusive or.
+    Lxor = auto()
+    #: (**lsl**) Logical shift left.
+    Lsl = auto()
+    #: (**lsr**) Logical shift right.
+    Lsr = auto()
     # Other Binary
+    # (**->**) Initial value.
     Arrow = auto()
+    # (**->**) Initial value.
     Pre = auto()
+    # (**@**) Array concat.
     Concat = auto()
 
     @staticmethod
@@ -92,14 +132,14 @@ class BinaryOp(Enum):
 
 
 class PathIdExpr(C.Expression):
-    """:py:class:`ansys.scadeone.swan.PathIdentifier` expression"""
+    """:py:class:`ansys.scadeone.swan.PathIdentifier` expression."""
     def __init__(self, path: C.PathIdentifier) -> None:
         super().__init__()
         self._path = path
 
     @property
     def id(self) -> C.PathIdentifier:
-        """The identifier expression"""
+        """The identifier expression."""
         return self._path
 
     def __str__(self) -> str:
@@ -107,14 +147,14 @@ class PathIdExpr(C.Expression):
 
 
 class LastExpr(C.Expression):
-    """Last expression"""
+    """Last expression."""
     def __init__(self, id: C.Identifier) -> None:
         super().__init__()
         self._id = id
 
     @property
     def identifier(self) -> C.Identifier:
-        """Identifier"""
+        """Identifier."""
         return self._id
 
     def __str__(self) -> str:
@@ -122,75 +162,93 @@ class LastExpr(C.Expression):
 
 
 class LiteralKind(Enum):
+    """Literal kind enumeration."""
+
+    #: Boolean literal
     Bool = auto()
+    #: Char literal
     Char = auto()
+    #: Numeric literal (integer or float, with/without size)
     Numeric = auto()
+    #: Erroneous literal
+    Error = auto()
 
 
-class LiteralExpr(C.Expression):
-    """Class for char, numeric and boolean expression
+class Literal(C.Expression):
+    """Class for char, numeric, and Boolean expression.
 
-       Boolean value is stored as 'true' or 'false'
+       Boolean value is stored as 'true' or 'false'.
+
+       Char value is a ascii char with its value between simple quotes (ex: 'a')
+       or an hexadecimal value.
 
        Numeric value is INTEGER, TYPED_INTEGER, FLOAT, TYPED_FLOAT
-       (see language grammar definition and C.NumericRE class)
+       (see language grammar definition and :py:class:`SwanRE` class).
     """
-    def __init__(self, value: str, kind: LiteralKind) -> None:
+    def __init__(self, value: str) -> None:
         super().__init__()
         self._value = value
-        self._kind = kind
+        if C.SwanRE.is_char(self._value):
+            self._kind = LiteralKind.Char
+        elif C.SwanRE.is_bool(self._value):
+            self._kind = LiteralKind.Bool
+        elif C.SwanRE.is_numeric(self._value):
+            self._kind = LiteralKind.Numeric
+        else:
+            self._kind = LiteralKind.Error
 
     @property
     def value(self) -> str:
-        """Literal expression"""
+        """Literal expression."""
         return self._value
 
     @property
     def is_bool(self) -> bool:
-        """Return true when LiteralExpr is a boolean"""
+        """Returns true when LiteralExpr is a Boolean."""
         return self._kind == LiteralKind.Bool
 
     @property
     def is_true(self) -> bool:
-        """Return true when LiteralExpr is true"""
+        """Returns true when LiteralExpr is true."""
         return (self._kind == LiteralKind.Bool
                 and self._value == 'true')
 
     @property
     def is_char(self) -> bool:
-        """Return true when LiteralExpr is a char"""
+        """Returns true when LiteralExpr is a char."""
         return self._kind == LiteralKind.Char
 
     @property
     def is_numeric(self) -> bool:
-        """Return true when LiteralExpr is a numeric"""
+        """Returns true when LiteralExpr is a numeric."""
         return self._kind == LiteralKind.Numeric
 
     @property
     def is_integer(self):
-        """Return true when LiteralExpr is an integer"""
+        """Returns true when LiteralExpr is an integer."""
         return (self._kind == LiteralKind.Numeric
-                and C.NumericRE.is_integer(self.value))
+                and C.SwanRE.is_integer(self.value))
 
     @property
     def is_float(self):
-        """Return true when LiteralExpr is a float"""
+        """Returns true when LiteralExpr is a float."""
         return (self._kind == LiteralKind.Numeric
-                and C.NumericRE.is_float(self.value))
+                and C.SwanRE.is_float(self.value))
 
     def __str__(self) -> str:
         return str(self.value)
 
+
 class Pattern(C.SwanItem):
-    """Base class for patterns"""
+    """Base class for patterns."""
 
     def __init__(self) -> None:
         super().__init__()
 
 
 class ProtectedPattern(Pattern, C.ProtectedItem):
-    """Protected pattern expression, i.e. saved as string if
-    syntactically incorrect"""
+    """Protected pattern expression, i.e., saved as string if
+    syntactically incorrect."""
 
     def __init__(self, value: str) -> None:
         C.ProtectedItem.__init__(self, value)
@@ -219,17 +277,17 @@ class ClockExpr(C.SwanItem):
 
     @property
     def id(self) -> C.Identifier:
-        """Clock identifier"""
+        """Clock identifier."""
         return self._id
 
     @property
     def is_not(self) -> bool:
-        """**not** id clock expression"""
+        """**not** id clock expression."""
         return self._is_not
 
     @property
     def pattern(self) -> Union[Pattern, None]:
-        """Matching pattern or None"""
+        """Matching pattern or None."""
         return self._pattern
 
     def __str__(self) -> str:
@@ -239,9 +297,10 @@ class ClockExpr(C.SwanItem):
             return f"not {self.id}"
         return str(self.id)
 
+
 class UnaryExpr(C.Expression):
     """Expression with unary operators
-    :py:class`ansys.scadeone.swan.expressions.UnaryOp`"""
+    :py:class`ansys.scadeone.swan.expressions.UnaryOp`."""
     def __init__(self,
                  operator: UnaryOp,
                  expr: C.Expression) -> None:
@@ -251,12 +310,12 @@ class UnaryExpr(C.Expression):
 
     @property
     def operator(self) -> UnaryOp:
-        """Unary operator"""
+        """Unary operator."""
         return self._operator
 
     @property
     def expr(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._expr
 
     def __str__(self) -> str:
@@ -265,7 +324,7 @@ class UnaryExpr(C.Expression):
 
 class BinaryExpr(C.Expression):
     """Expression with binary operators
-    :py:class`ansys.scadeone.swan.expressions.BinaryOp`"""
+    :py:class`ansys.scadeone.swan.expressions.BinaryOp`."""
     def __init__(self,
                  operator: BinaryOp,
                  left: C.Expression,
@@ -278,23 +337,24 @@ class BinaryExpr(C.Expression):
 
     @property
     def operator(self) -> BinaryOp:
-        """Binary operator"""
+        """Binary operator."""
         return self._operator
 
     @property
     def left(self) -> C.Expression:
-        """Left expression"""
+        """Left expression."""
         return self._left
 
     @property
     def right(self) -> C.Expression:
-        """Left expression"""
+        """Right expression."""
         return self._right
 
     def __str__(self) -> str:
         return "{l} {o} {r}".format(l=str(self.left),
                                         o=BinaryOp.to_str(self.operator),
                                         r=str(self.right))
+
 
 class WhenClockExpr(C.Expression):
     """*expr* **when** *clock_expr* expression"""
@@ -340,8 +400,8 @@ class WhenMatchExpr(C.Expression):
         return f"{self.expr} when match {self.when}"
 
 
-class CastExpr(C.Expression):
-    """Cast expression: ( *expr* :> *type_expr*)"""
+class NumericCast(C.Expression):
+    """Cast expression: ( *expr* :> *type_expr*)."""
     def __init__(self,
                  expr: C.Expression,
                  type: C.TypeExpression) -> None:
@@ -352,12 +412,12 @@ class CastExpr(C.Expression):
 
     @property
     def expr(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._expr
 
     @property
     def type(self) -> C.TypeExpression:
-        """Type expression"""
+        """Type expression."""
         return self._type
 
     def __str__(self) -> str:
@@ -365,9 +425,7 @@ class CastExpr(C.Expression):
 
 
 class GroupItem(C.SwanItem):
-    """Item of a group expression:
-
-    *group_item* ::= [[ *id* : ]] *exp*
+    """Item of a group expression: *group_item* ::= [[ *label* : ]] *expr*.
     """
 
     def __init__(self,
@@ -379,12 +437,12 @@ class GroupItem(C.SwanItem):
 
     @property
     def expr(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._expr
 
     @property
     def label(self) -> Union[C.Identifier, None]:
-        """Type expression"""
+        """Type expression."""
         return self._label
 
     @property
@@ -396,7 +454,7 @@ class GroupItem(C.SwanItem):
 
 
 class Group(C.SwanItem):
-    """Group item as a list of GroupItem"""
+    """Group item as a list of GroupItem."""
 
     def __init__(self, items: List[GroupItem]) -> None:
         super().__init__()
@@ -404,16 +462,16 @@ class Group(C.SwanItem):
 
     @property
     def items(self) -> List[GroupItem]:
-        """Group items"""
+        """Group items."""
         return self._items
 
     def __str__(self) -> str:
         return ", ".join(str(i) for i in self._items)
 
 
-class GroupExpr(C.Expression):
+class GroupConstructor(C.Expression):
     """A group expression:
-    *group_expr ::= (*group*)
+    *group_expr ::= (*group*).
     """
     def __init__(self, group: Group) -> None:
         super().__init__()
@@ -428,26 +486,29 @@ class GroupExpr(C.Expression):
 
 
 class GroupRenaming(C.SwanItem):
-    """(( Id | Integer)) [: [Id]] renaming item of a group
+    """Group renaming: (( Id | Integer)) [: [Id]].
 
-    - Id | Integer: index, either a name or a position, ex: a or 2
-    - ': Id': a renaming, ex a:b, 2:b
-    - ':' (no Id): a shortcut ex: a: => a:a
+    - Renaming source index as Id or Integer, either a name or a position. For example: *a* or 2.
+    - Optional renaming target index:
+
+      - No index
+      - Renaming as **:** Id, for example: *a* **:** *b*, 2 **:** *b*
+      - Shortcut, example *a* **:** means *a* **:** *a*
 
     Parameters
     ----------
 
     source: C.Identifier | LiteralExpr
-       source index
+       Source index.
 
     renaming: C.Identifier  (optional)
-       renaming as an Identifier
+       Renaming as an Identifier.
 
     is_shortcut: bool (optional)
-       renaming is a shortcut of the form ID:
+       Renaming is a shortcut of the form ID.
     """
     def __init__(self,
-                 source: Union[C.Identifier, LiteralExpr],
+                 source: Union[C.Identifier, Literal],
                  renaming: Optional[C.Identifier] = None,
                  is_shortcut: Optional[bool] = False
                  ) -> None:
@@ -457,18 +518,18 @@ class GroupRenaming(C.SwanItem):
         self._is_shortcut = is_shortcut
 
     @property
-    def source(self) -> Union[C.Identifier, LiteralExpr]:
-        """Source selection in group"""
+    def source(self) -> Union[C.Identifier, Literal]:
+        """Source selection in group."""
         return self._source
 
     @property
     def is_shortcut(self) -> bool:
-        """True when renaming is a shortcut"""
+        """True when renaming is a shortcut."""
         return self._is_shortcut
 
     @property
     def is_valid(self) -> bool:
-        """True when renaming is a shortcut with no renaming, or a renaming with no shortcut"""
+        """True when renaming is a shortcut with no renaming, or a renaming with no shortcut."""
         if self._renaming and self.is_shortcut:
             # check both id are the same
             return self._source.id == self._renaming.id
@@ -476,12 +537,12 @@ class GroupRenaming(C.SwanItem):
 
     @property
     def is_by_name(self) -> bool:
-        """True when access by name"""
+        """True when access by name."""
         return isinstance(self._source, C.Identifier)
 
     @property
     def renaming(self) -> Union[C.Identifier, None]:
-        """Renaming in new group. None if no renaming"""
+        """Renaming in new group. None if no renaming."""
         return self._renaming
 
     def __str__(self) -> str:
@@ -493,15 +554,57 @@ class GroupRenaming(C.SwanItem):
         return renaming
 
 
+class ProtectedGroupRenaming(GroupRenaming, C.ProtectedItem):
+    """Specific class when a renaming is protected for syntax error.
+
+    Source is an adaptation such as: .( {syntax%renaming%syntax} ).
+    """
+    def __init__(self, data: str, markup: Optional[str] = C.Markup.Syntax) -> None:
+        C.ProtectedItem.__init__(self, data, markup)
+
+    @property
+    def source(self) -> None:
+        """Source selection in group."""
+        return None
+
+    @property
+    def is_shortcut(self) -> bool:
+        """True when renaming is a shortcut."""
+        return self._is_shortcut
+
+    @property
+    def is_shortcut(self) -> bool:
+        """True when renaming is a shortcut."""
+        return False
+
+    @property
+    def is_valid(self) -> bool:
+        """True when renaming is a shortcut with no renaming, or a renaming with no shortcut."""
+        return False
+
+    @property
+    def is_by_name(self) -> bool:
+        """True when access by name."""
+        return False
+
+    @property
+    def renaming(self) -> Union[C.Identifier, None]:
+        """Renaming in new group. None if no renaming."""
+        return None
+
+    def __str__(self) -> str:
+        return C.ProtectedItem.__str__(self)
+
+
 class GroupAdaptation(C.SwanItem):
-    """Group adaptation: *group_adaptation* ::= . ( *group_renamings* )"""
+    """Group adaptation: *group_adaptation* ::= . ( *group_renamings* )."""
     def __init__(self, renamings: List[GroupRenaming]) -> None:
         super().__init__()
         self._renamings = renamings
 
     @property
     def renamings(self) -> List[GroupRenaming]:
-        """Renaming list of group adaptation"""
+        """Renaming list of group adaptation."""
         return self._renamings
 
     def __str__(self) -> str:
@@ -509,35 +612,33 @@ class GroupAdaptation(C.SwanItem):
         return f".({adaptation})"
 
 
-class GroupAdaptationExpr(C.Expression):
-    """Group adaptation expression:
-
-    *group_expr* ::= *expr* *group_adaptation*
+class GroupProjection(C.Expression):
+    """Group projection: *group_expr* ::= *expr* *group_adaptation*.
     """
     def __init__(self,
                  expr: C.Expression,
                  adaptation: GroupAdaptation) -> None:
         super().__init__()
         self._expr = expr
-        self.__adaptation = adaptation
+        self._adaptation = adaptation
 
     @property
     def expr(self) -> C.Expression:
-        """Adapted expression"""
+        """Adapted expression."""
         return self._expr
 
     @property
-    def adaptation(self) -> List[GroupRenaming]:
-        """Expression group adaptation"""
-        return self.__adaptation
+    def adaptation(self) -> GroupAdaptation:
+        """Expression group adaptation."""
+        return self._adaptation
 
     def __str__(self) -> str:
         return f"{self.expr} {self.adaptation}"
 
 # Composite
 
-class StaticArrayProjExpr(C.Expression):
-    """Static projection: expr[index], where index is a static expression"""
+class ArrayProjection(C.Expression):
+    """Static projection: *expr* [*index*], where index is a static expression."""
     def __init__(self,
                  expr: C.Expression,
                  index: C.Expression) -> None:
@@ -547,20 +648,20 @@ class StaticArrayProjExpr(C.Expression):
 
     @property
     def expr(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._expr
 
     @property
     def index(self) -> C.Expression:
-        """Index expression"""
+        """Index expression."""
         return self._index
 
     def __str__(self) -> str:
         return f"{self.expr}{self.index}"
 
 
-class StructProjExpr(C.Expression):
-    """Static structure field access: expr . label"""
+class StructProjection(C.Expression):
+    """Static structure field access: *expr* . *label*."""
     def __init__(self,
                  expr: C.Expression,
                  label: C.Identifier) -> None:
@@ -570,20 +671,20 @@ class StructProjExpr(C.Expression):
 
     @property
     def expr(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._expr
 
     @property
     def label(self) -> C.Identifier:
-        """Field name"""
+        """Field name."""
         return self._label
 
     def __str__(self) -> str:
         return f"{self.expr}{self.label}"
 
 
-class MkGroupExpr(C.Expression):
-    """Group creation: *path_id* **group** (*expr*)"""
+class StructDestructor(C.Expression):
+    """Group creation: *path_id* **group** (*expr*)."""
     def __init__(self,
                  group_type: C.PathIdentifier,
                  expr: C.Expression) -> None:
@@ -593,22 +694,20 @@ class MkGroupExpr(C.Expression):
 
     @property
     def expr(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._expr
 
     @property
     def group(self) -> C.Identifier:
-        """Group type"""
+        """Group type."""
         return self._group
 
     def __str__(self) -> str:
         return f"{self.group} group ({self.expr})"
 
 
-class SliceExpr(C.Expression):
-    """Slice expression:
-
-    *expr* [ *expr* .. *expr*] slice expression"""
+class Slice(C.Expression):
+    """Slice expression: *expr* [ *expr* .. *expr*]."""
     def __init__(self,
                  expr: C.Expression,
                  start_index: C.Expression,
@@ -620,17 +719,17 @@ class SliceExpr(C.Expression):
 
     @property
     def expr(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._expr
 
     @property
     def start(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._start_index
 
     @property
     def end(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._end_index
 
     def __str__(self) -> str:
@@ -638,10 +737,10 @@ class SliceExpr(C.Expression):
 
 
 class LabelOrIndex(C.Expression):
-    """Store an index as:
+    """Stores an index as:
 
        - a label :py:class:`ansys.scadeone.swan.Identifier` or,
-       - an expression :py:class:`ansys.scadeone.swan.Expression`
+       - an expression :py:class:`ansys.scadeone.swan.Expression`.
     """
     def __init__(self,
                  index_or_label: Union[C.Identifier,
@@ -655,7 +754,7 @@ class LabelOrIndex(C.Expression):
 
     @property
     def index(self) -> Union[C.Identifier, C.Expression]:
-        """Return the index (expression or label)"""
+        """Returns the index (expression or label)."""
         return self._index
 
     def __str__(self) -> str:
@@ -663,8 +762,8 @@ class LabelOrIndex(C.Expression):
         return fmt.format(str(self.index))
 
 
-class DynProjExpr(C.Expression):
-    """Dynamic projection: (*expr* . {{ *label_or_index* }}+ **default** *expr*)"""
+class ProjectionWithDefault(C.Expression):
+    """Dynamic projection: (*expr* . {{ *label_or_index* }}+ **default** *expr*)."""
     def __init__(self,
                  expr: C.Expression,
                  indices: List[LabelOrIndex],
@@ -677,17 +776,17 @@ class DynProjExpr(C.Expression):
 
     @property
     def expr(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._expr
 
     @property
     def default(self) -> C.Expression:
-        """Default value"""
+        """Default value."""
         return self._default
 
     @property
     def indices(self) -> List[LabelOrIndex]:
-        """List of indices"""
+        """List of indices."""
         return self._indices
 
     def __str__(self) -> str:
@@ -696,8 +795,8 @@ class DynProjExpr(C.Expression):
         return f"({self.expr} . {projections} default {self.default})"
 
 
-class MkArrayExpr(C.Expression):
-    """Array expression: *expr* ^ *expr*"""
+class ArrayRepetition(C.Expression):
+    """Array expression: *expr* ^ *expr*."""
     def __init__(self,
                  expr: C.Expression,
                  size: C.Expression):
@@ -707,20 +806,20 @@ class MkArrayExpr(C.Expression):
 
     @property
     def expr(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._expr
 
     @property
     def size(self) -> C.Expression:
-        """Array size"""
+        """Array size."""
         return self._size
 
     def __str__(self) -> str:
         return f"{self.expr}^{self.size}"
 
 
-class MkArrayGroupExpr(C.Expression):
-    """Make array expression: [ *group* ]"""
+class ArrayConstructor(C.Expression):
+    """Array construction expression: [ *group* ]."""
     def __init__(self,
                  group: Group):
         super().__init__()
@@ -728,18 +827,16 @@ class MkArrayGroupExpr(C.Expression):
 
     @property
     def group(self) -> Group:
-        """Group items as a Group"""
+        """Group items as a Group."""
         return self._group
 
     def __str__(self) -> str:
         return f"[{self.group}]"
 
 
-class MkStructExpr(C.Expression):
+class StructConstructor(C.Expression):
     """Structure expression, with optional type for cast
-    to structure from a group:
-
-    { *group* } [[ : *path_id*]]
+    to structure from a group: { *group* } [[ : *path_id*]].
 
     """
     def __init__(self,
@@ -751,12 +848,12 @@ class MkStructExpr(C.Expression):
 
     @property
     def group(self) -> Group:
-        """Group items"""
+        """Group items."""
         return self._group
 
     @property
     def type(self) -> Union[C.PathIdentifier, None]:
-        """Structure type"""
+        """Structure type."""
         return self._struct_type
 
     def __str__(self) -> str:
@@ -765,8 +862,8 @@ class MkStructExpr(C.Expression):
         return f"{{{self.group}}}{type_part}"
 
 
-class VariantExpr(C.Expression):
-    """Variant expression: *path_id* { *group* }"""
+class VariantValue(C.Expression):
+    """Variant expression: *path_id* { *group* }."""
     def __init__(self,
                  tag: C.PathIdentifier,
                  group: Group) -> None:
@@ -776,12 +873,12 @@ class VariantExpr(C.Expression):
 
     @property
     def group(self) -> Group:
-        """Group items"""
+        """Group items."""
         return self._group
 
     @property
     def tag(self) -> C.PathIdentifier:
-        """Variant tag"""
+        """Variant tag."""
         return self._tag
 
     def __str__(self) -> str:
@@ -789,11 +886,12 @@ class VariantExpr(C.Expression):
 
 
 class Modifier(C.SwanItem):
-    """Modifier expression: {{ *label_or_index* }}+ = *expr*
-       Label of index can be syntactically incorrect. In which case,
-       _modifier_ is a string, and *is_protected* property is True.
+    """Modifier expression: {{ *label_or_index* }}+ = *expr*.
 
-    see :py:class:`ansys.scadeone.swan.expression.MkCopyExpr`
+    Label of index can be syntactically incorrect. In which case, _modifier_ is
+    a string, and *is_protected* property is True.
+
+    See :py:class:`FunctionalUpdate`.
     """
     def __init__(self,
                  modifier: Union[List[LabelOrIndex], str],
@@ -805,12 +903,12 @@ class Modifier(C.SwanItem):
 
     @property
     def expr(self) -> C.Expression:
-        """Modifier expression"""
+        """Modifier expression."""
         return self._expr
 
     @property
     def modifier(self) -> Union[List[LabelOrIndex], str]:
-        """Modifier as label or index"""
+        """Modifier as label or index."""
         return self._modifier
 
     @property
@@ -825,10 +923,8 @@ class Modifier(C.SwanItem):
         return f"{m_str} = {self.expr}"
 
 
-class MkCopyExpr(C.Expression):
-    """Copy with modification:
-
-       ( *expr*  **with** *modifier* {{ ; *modifier* }} [[ ; ]] )
+class FunctionalUpdate(C.Expression):
+    """Copy with modification: ( *expr*  **with** *modifier* {{ ; *modifier* }} [[ ; ]] ).
     """
     def __init__(self,
                  expr: C.Expression,
@@ -839,12 +935,12 @@ class MkCopyExpr(C.Expression):
 
     @property
     def expr(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._expr
 
     @property
     def modifiers(self) -> List[Modifier]:
-        """Copy modifiers"""
+        """Copy modifiers."""
         return self._modifiers
 
     def __str__(self) -> str:
@@ -854,7 +950,7 @@ class MkCopyExpr(C.Expression):
 # Switches
 
 class IfteExpr(C.Expression):
-    """**if** *expr* **then** *expr* **else** *expr* expression"""
+    """Conditional if/then/else expression: **if** *expr* **then** *expr* **else** *expr*."""
     def __init__(self,
                  cond_expr: C.Expression,
                  then_expr: C.Expression,
@@ -866,17 +962,17 @@ class IfteExpr(C.Expression):
 
     @property
     def condition(self) -> C.Expression:
-        """Condition expression"""
+        """Condition expression."""
         return self._cond
 
     @property
     def then_expr(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._then
 
     @property
     def else_expr(self) -> C.Expression:
-        """Expression"""
+        """Expression."""
         return self._else
 
     def __str__(self) -> str:
@@ -884,8 +980,9 @@ class IfteExpr(C.Expression):
 
 
 class CaseBranch(C.SwanItem):
-    """ *pattern* : *expr* ,
-    see :py:class:`ansys.scadeone.swan.expressions.CaseExpr`"""
+    """Case branch expression:  *pattern* : *expr*.
+
+    See :py:class:`ansys.scadeone.swan.expressions.CaseExpr`."""
     def __init__(self,
                  pattern: Pattern,
                  expr: C.Expression) -> None:
@@ -895,19 +992,20 @@ class CaseBranch(C.SwanItem):
 
     @property
     def pattern(self) -> Pattern:
-        """Case branch pattern"""
+        """Case branch pattern."""
         return self._pattern
 
     @property
     def expr(self) -> C.Expression:
-        """Case branch expression"""
+        """Case branch expression."""
         return self._expr
 
     def __str__(self) -> str:
         return f"| {self.pattern}: {self.expr}"
 
+
 class CaseExpr(C.Expression):
-    """Expression **case** *expr* **of** {{ | *pattern* : *expr* }}+ )"""
+    """Case expression: **case** *expr* **of** {{ | *pattern* : *expr* }}+ )."""
     def __init__(self,
                  expr: C.Expression,
                  branches: List[CaseBranch]) -> None:
@@ -917,12 +1015,12 @@ class CaseExpr(C.Expression):
 
     @property
     def expr(self) -> C.Expression:
-        """Case expression"""
+        """Case expression."""
         return self._expr
 
     @property
     def branches(self) -> List[CaseBranch]:
-        """Case branches"""
+        """Case branches."""
         return self._branches
 
     def __str__(self) -> str:
@@ -931,14 +1029,14 @@ class CaseExpr(C.Expression):
 
 
 class PathIdPattern(Pattern):
-    """Simple pattern: *pattern* ::= *path_id*"""
+    """Simple pattern: *pattern* ::= *path_id*."""
     def __init__(self, path_id: C.PathIdentifier) -> None:
         super().__init__()
         self._path_id = path_id
 
     @property
     def path_id(self) -> C.PathIdentifier:
-        """The path_id of pattern"""
+        """The path_id of pattern."""
         return self._path_id
 
     def __str__(self) -> str:
@@ -946,7 +1044,7 @@ class PathIdPattern(Pattern):
 
 
 class VariantPattern(Pattern):
-    """ Variant pattern.
+    """ Variant pattern:
 
         *pattern* ::=
 
@@ -966,27 +1064,27 @@ class VariantPattern(Pattern):
 
     @property
     def path_id(self) -> C.PathIdentifier:
-        """The path_id of variant pattern"""
+        """The path_id of variant pattern."""
         return self._path_id
 
     @property
     def has_underscore(self) -> bool:
-        """Variant part is '_'"""
+        """Variant part is '_'."""
         return self._underscore
 
     @property
     def has_capture(self) -> bool:
-        """The variant pattern has a captured tag"""
+        """The variant pattern has a captured tag."""
         return self._captured is not None
 
     @property
     def empty_capture(self) -> bool:
-        """The variant pattern as an empty {} capture"""
+        """The variant pattern as an empty {} capture."""
         return not (self.has_underscore or self.has_capture)
 
     @property
     def captured(self) -> Union[C.Identifier, None]:
-        """The variant pattern captured tag"""
+        """The variant pattern captured tag."""
         return self._captured
 
     def __str__(self) -> str:
@@ -998,7 +1096,7 @@ class VariantPattern(Pattern):
 
 
 class CharPattern(Pattern):
-    """ Pattern: *pattern* ::= CHAR"""
+    """ Pattern: *pattern* ::= CHAR."""
     def __init__(self, value: str) -> None:
         super().__init__()
         self._value = value
@@ -1012,7 +1110,7 @@ class CharPattern(Pattern):
 
 
 class IntPattern(Pattern):
-    """ Pattern: *pattern* ::= [-] INTEGER | [-] TYPED_INTEGER"""
+    """ Pattern: *pattern* ::= [-] INTEGER | [-] TYPED_INTEGER."""
     def __init__(self,
                  int_value: str,
                  minus: Optional[bool]=False) -> None:
@@ -1022,18 +1120,18 @@ class IntPattern(Pattern):
 
     @property
     def value(self) -> str:
-        """Return value as a string, without sign"""
+        """Returns value as a string, without sign."""
         return self._value
 
     @property
     def is_minus(self) -> bool:
-        """Return True when has sign minus"""
+        """Returns True when has sign minus."""
         return self._is_minus
 
     @property
     def as_int(self) -> int:
-        """Return value as an integer"""
-        int_descr = C.NumericRE.parse_integer(self.value, self.is_minus)
+        """Returns value as an integer."""
+        int_descr = C.SwanRE.parse_integer(self.value, self.is_minus)
         return int_descr.value
 
     def __str__(self) -> str:
@@ -1041,14 +1139,14 @@ class IntPattern(Pattern):
 
 
 class BoolPattern(Pattern):
-    """ Pattern: *pattern* ::= **true** | **false**"""
+    """ Pattern: *pattern* ::= **true** | **false**."""
     def __init__(self, value: bool) -> None:
         super().__init__()
         self._value = value
 
     @property
     def is_true(self) -> bool:
-        """Returns True when pattern is **true**, else False"""
+        """Returns True when pattern is **true**, else False."""
         return self._value
 
     def __str__(self) -> str:
@@ -1056,15 +1154,16 @@ class BoolPattern(Pattern):
 
 
 class UnderscorePattern(Pattern):
-    """ Pattern: *pattern* ::= **_**"""
+    """ Pattern: *pattern* ::= **_**."""
     def __init__(self) -> None:
         super().__init__()
 
     def __str__(self) -> str:
         return '_'
 
+
 class DefaultPattern(Pattern):
-    """ Pattern: *pattern* ::= **default**"""
+    """ Pattern: *pattern* ::= **default**."""
     def __init__(self) -> None:
         super().__init__()
 
@@ -1073,7 +1172,7 @@ class DefaultPattern(Pattern):
 
 
 class PortExpr(C.Expression):
-    """Port information"""
+    """Port information."""
 
     def __init__(self, luid: Optional[C.Luid] = None) -> None:
         super().__init__()
@@ -1081,7 +1180,7 @@ class PortExpr(C.Expression):
 
     @property
     def luid(self) -> Union[C.Luid, str]:
-        """Port identification, either a Luid or 'self'"""
+        """Port identification, either a Luid or 'self'."""
         return "self" if self.is_self else self._luid
 
     @property
@@ -1092,12 +1191,12 @@ class PortExpr(C.Expression):
         return str(self.luid)
 
 
-class WindowExpr(C.Expression):
-    """*expr* ::= **window** <<*expr*>> ( *group* ) ( *group* )"""
+class Window(C.Expression):
+    """Temporal window: *expr* ::= **window** <<*expr*>> ( *group* ) ( *group* )."""
     def __init__(self,
                  size: C.Expression,
-                 params: Group,
-                 init: Group) -> None:
+                 init: Group,
+                 params: Group) -> None:
         super().__init__()
         self._size = size
         self._params = params
@@ -1105,25 +1204,25 @@ class WindowExpr(C.Expression):
 
     @property
     def size(self) -> C.Expression:
-        """Window size"""
+        """Window size."""
         return self._size
 
     @property
     def params(self) -> Group:
-        """Window parameters"""
+        """Window parameters."""
         return self._params
 
     @property
     def init(self) -> Group:
-        """Window initial values"""
+        """Window initial values."""
         return self._init
 
     def __str__(self) -> str:
-        return f"window <<{self.size}>> ({self.params}) ({self.init})"
+        return f"window <<{self.size}>> ({self.init}) ({self.params})"
 
 
-class MergeExpr(C.Expression):
-    """**merge** ( *group* ) {{ ( *group* ) }}"""
+class Merge(C.Expression):
+    """**merge** ( *group* ) {{ ( *group* ) }}."""
     def __init__(self,
                  params: List[Group]) -> None:
         super().__init__()
@@ -1147,6 +1246,6 @@ class MergeExpr(C.Expression):
 
 
 class ProtectedExpr(C.Expression, C.ProtectedItem):
-    """Protected expression, i.e. saved as string if syntactically incorrect"""
-    def __init__(self, value: str) -> None:
-        C.ProtectedItem.__init__(self, value)
+    """Protected expression, i.e., saved as string if syntactically incorrect."""
+    def __init__(self, value: str, markup: Optional[str] = C.Markup.Syntax) -> None:
+        C.ProtectedItem.__init__(self, value, markup)

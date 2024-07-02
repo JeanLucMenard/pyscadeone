@@ -1,7 +1,7 @@
-# Copyright (c) 2023-2023 ANSYS, Inc.
+# Copyright (c) 2023-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 """
-This module contains the classes for variable declarations
+This module contains the classes for variable declarations:
 - VarDecl
 - ProtectedVariable, for syntactically incorrect variable definition
 """
@@ -11,7 +11,7 @@ import ansys.scadeone.swan.common as C
 from ansys.scadeone.swan.expressions import ClockExpr
 
 class VarDecl(C.Declaration, C.Variable):
-    """Variable declaration class"""
+    """Class for variable declaration."""
     def __init__(self,
                  id: C.Identifier,
                  is_clock: Optional[bool] = False,
@@ -30,32 +30,32 @@ class VarDecl(C.Declaration, C.Variable):
 
     @property
     def is_clock(self) -> bool:
-        """True when variable is a clock"""
+        """True when variable is a clock."""
         return self._is_clock
 
     @property
     def is_probe(self) -> bool:
-        """True when variable is a probe"""
+        """True when variable is a probe."""
         return self._is_probe
 
     @property
     def type(self) -> Union[C.GroupTypeExpression, None]:
-        """Variable type"""
+        """Variable type."""
         return self._var_type
 
     @property
     def when(self) -> Union[ClockExpr, None]:
-        """Variable clock"""
+        """Variable clock."""
         return self._when
 
     @property
     def default(self) -> Union[C.Expression, None]:
-        """Variable default expression"""
+        """Variable default expression."""
         return self._default
 
     @property
     def last(self) -> Union[C.Expression, None]:
-        """Variable last expression"""
+        """Variable last expression."""
         return self._last
 
     def __str__(self) -> str:
@@ -76,13 +76,13 @@ class VarDecl(C.Declaration, C.Variable):
         return buffer
 
     def var_decl(self) -> str:
-        """Return variable declaration string"""
+        """Return variable declaration string."""
         return f"var {self};\n"
 
 
 class ProtectedVariable(C.Variable,
                         C.ProtectedItem):
-    """Protected variable definition as a string"""
+    """Protected variable definition as a string."""
     def __init__(self, value: str) -> None:
         C.ProtectedItem.__init__(self,
                                       value,

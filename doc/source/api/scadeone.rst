@@ -2,32 +2,18 @@
 Scade One API
 *************
 
+.. currentmodule:: ansys.scadeone 
 
-Module :py:mod:`ansys.scadeone`
-======================================
+The :py:mod:`ansys.scadeone` module must be referenced by scripts using PyScadeOne. It exposes the :py:class:`ScadeOne` class representing a Scade One instance. 
 
-This module contains the class representing a Scade One instance, which
-is the main access to the API
+An instance of the :py:class:`ScadeOne` class gives access to project loading and model-related activities as shown in the next figure:
 
-.. code:: python
 
-    from ansys.scadeone import ScadeOne
+.. uml:: scadeone.puml
     
-    # Create app and use it
-    app = ScadeOne(specified_version="1.0")
-    app.load_project("project.sproj")
-    ...
-    app.close()
-    # Use context manager
-    with ScadeOne(specified_version="1.0") as app:
-      app.load_project("project.sproj")
-      # no need to call app.close()
-   ...
+.. rst-class:: uml-caption
 
-ScadeOne API Documentation
---------------------------
-
-.. currentmodule:: ansys.scadeone.scadeone 
+    ScadeOne class hierarchy
 
 .. autoclass:: ScadeOne
  

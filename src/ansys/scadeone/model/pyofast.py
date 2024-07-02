@@ -1,11 +1,11 @@
-# Copyright (c) 2022-2023 ANSYS, Inc.
+# Copyright (c) 2022-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 """
 The PyOfAst module transforms F# AST into Python ansys.scadeone.swan classes.
 """
 
 from ansys.scadeone.common.exception import ScadeOneException
-from ansys.scadeone.common.assets import SwanString
+from ansys.scadeone.common.storage import SwanString
 
 import ansys.scadeone.swan as S
 from .parser import Parser
@@ -177,8 +177,8 @@ def patternOrRawOfAst(pattern):
 # Renamings
 # ---------
 def renamingOfAst(ast):
-    if ast.IsRenamingByPos: # of int * bool * Id option
-        index = S.LiteralExpr(ast.Item1, S.LiteralKind.Numeric)
+    if ast.IsRenamingByPos: # of string * bool * Id option
+        index = S.Literal(ast.Item1)
         is_shortcut = ast.Item2
         if renaming := getValueOf(ast.Item3):
             renaming = identifierOfAst(renaming)
@@ -191,6 +191,11 @@ def renamingOfAst(ast):
             renaming = identifierOfAst(renaming)
             is_shortcut = index.value == renaming.value
         return S.GroupRenaming(index, renaming, is_shortcut)
+
+    if ast.IsRenamingRaw: # of SourcePosition.t
+        markup = getMarkup(ast.Item)
+        content = getProtectedString(ast.Item)
+        return S.ProtectedGroupRenaming(content, markup)
 
 def groupAdaptationOfAst(ast):
     renamings = [renamingOfAst(ren) for ren in ast.GRenaming]
@@ -237,12 +242,10 @@ def forwardDimOfAst(ast):
 
 def forwardBodyOfAst(ast):
     sections = [scopeSectionOfAst(sec) for sec in ast.FScopeSections]
-    condition = ast.FStopCondition
-    until = unless = None
-    if condition.IsFStopUntil:
-       until = expressionOfAst(condition.Item)
-    if condition.IsFStopUnless:
-       unless = expressionOfAst(condition.Item)
+    if until := getValueOf(ast.FUntilCondition):
+        until = exprOrRawOfAst(until)
+    if unless := getValueOf(ast.FUnlessCondition):
+        unless = exprOrRawOfAst(unless)
 
     return S.ForwardBody(sections, unless, until)
 
@@ -267,7 +270,7 @@ def forwardItemClauseOfAst(ast):
 
 def forwardArrayClauseOfAst(ast):
     if ast.IsFItemClause: # of ForwardItemClause
-        clause = forwardItemClauseOfAst(ast)
+        clause = forwardItemClauseOfAst(ast.Item)
     else: # ast.IsFArrayClause  of ForwardArrayClause
         clause = forwardArrayClauseOfAst(ast.Item)
     return S.ForwardArrayClause(clause)
@@ -279,7 +282,7 @@ def forwardReturnOfAst(ast):
     if ast.IsFRetArrayClause: # of Id option * ForwardArrayClause * SourcePosition.t
         if id := getValueOf(ast.Item1):
             id = identifierOfAst(id)
-            clause = forwardArrayClauseOfAst(ast.Item2)
+        clause = forwardArrayClauseOfAst(ast.Item2)
         return S.ForwardReturnArrayClause(clause, id)
     if ast.IsFRetRaw: # of Raw.t
         return S.ProtectedForwardReturnItem(getProtectedString(ast.Item))
@@ -300,7 +303,7 @@ def forwardOfAst(ast):
     body = forwardBodyOfAst(ast.Item4)
     returns = [forwardReturnOfAst(ret) for ret in ast.Item5]
 
-    return S.ForwardExpr(state, dims, body, returns, luid)
+    return S.Forward(state, dims, body, returns, luid)
 
 # Operator instance & expressions
 # -------------------------------
@@ -329,23 +332,23 @@ def operatorExprWithSPOfAst(ast):
 
 def operatorExprOfAst(ast):
     if ast.IsOIterator: # Iterator * Operator
-        operator = operatorOfAst(ast.Item2)
+        operator = operatorBaseOfAst(ast.Item2)
         return iteratorOfAst(ast.Item1, operator)
 
     if ast.IsOActivateClock: # Operator * ClockExpr
-        operator = operatorOfAst(ast.Item1)
+        operator = operatorBaseOfAst(ast.Item1)
         clock = clockExprOfAst(ast.Item2)
         return S.ActivateClock(operator, clock)
 
     if ast.IsOActivateCondition: # Operator * ExprOrRaw * bool * ExprOrRaw
-        operator = operatorOfAst(ast.Item1)
+        operator = operatorBaseOfAst(ast.Item1)
         cond = exprOrRawOfAst(ast.Item2)
         is_last = ast.Item3
         default = exprOrRawOfAst(ast.Item4)
         return S.ActivateEvery(operator, cond, is_last, default)
 
     if ast.IsORestart: # Operator * ExprOrRaw
-        operator = operatorOfAst(ast.Item1)
+        operator = operatorBaseOfAst(ast.Item1)
         condition = exprOrRawOfAst(ast.Item2)
         return S.Restart(operator, condition)
 
@@ -364,7 +367,7 @@ def operatorExprOfAst(ast):
         return S.AnonymousOperatorWithExpression(is_node, params, sections, expr)
 
     if ast.IsOPartial: # Operator * OptGroupItem list
-        operator = operatorOfAst(ast.Item1)
+        operator = operatorBaseOfAst(ast.Item1)
         partial_group = [optGroupItemOfAst(item) for item in ast.Item2]
         return S.Partial(operator, partial_group)
 
@@ -436,7 +439,7 @@ def operatorPrefixOfAst(ast, sizes, pragmas):
     op_expr = operatorExprWithSPOfAst(ast.Item)
     return S.PrefixOperatorExpression(op_expr, sizes)
 
-def operatorOfAst(ast):
+def operatorBaseOfAst(ast):
     sizes = [exprOrRawOfAst(sz) for sz in ast.CallSize]
     pragmas = [S.Pragma(text) for text in ast.CallPragmas]
     return operatorPrefixOfAst(ast.CallOp, sizes, pragmas)
@@ -446,7 +449,7 @@ def operatorOfAst(ast):
 def exprOrRawOfAst(ast):
     if ast.IsExprWithSP: # of Expr * SourcePosition.t
         return expressionOfAst(ast.Item1)
-    return S.ProtectedExpr(getProtectedString(ast.Item))
+    return S.ProtectedExpr(getProtectedString(ast.Item), getMarkup(ast.Item))
 
 def expressionOfAst(ast):
     if ast.IsEId: #  of PathId
@@ -457,14 +460,13 @@ def expressionOfAst(ast):
         return S.LastExpr(S.Identifier(nameOfAst(ast.Item), is_name=True))
 
     elif ast.IsEBoolLiteral: #  of bool
-        return S.LiteralExpr('true' if ast.Item else 'false',
-                             S.LiteralKind.Bool)
+        return S.Literal('true' if ast.Item else 'false')
 
     elif ast.IsECharLiteral: #  of string
-        return S.LiteralExpr(ast.Item, S.LiteralKind.Char)
+        return S.Literal(ast.Item)
 
     elif ast.IsENumLiteral: #  of string
-        return S.LiteralExpr(ast.Item, S.LiteralKind.Numeric)
+        return S.Literal(ast.Item)
 
     elif ast.IsEUnaryOp: #  of UnaryOp * ExprOrRaw
         return S.UnaryExpr(unaryOfOfAst(ast.Item1),
@@ -488,66 +490,66 @@ def expressionOfAst(ast):
     elif ast.IsECast: #  of ExprOrRaw * TypeExprOrRaw
         expr = exprOrRawOfAst(ast.Item1)
         type = typeOrRawOfAst(ast.Item2)
-        return S.CastExpr(expr, type)
+        return S.NumericCast(expr, type)
 
     elif ast.IsEGroup: #  of Group
         items = [groupItemOfAst(item) for item in ast.Item]
-        return S.GroupExpr(S.Group(items))
+        return S.GroupConstructor(S.Group(items))
 
     elif ast.IsEGroupAdapt: #  of ExprOrRaw * GroupAdaptation
         expr = exprOrRawOfAst(ast.Item1)
         adaptation = groupAdaptationOfAst(ast.Item2)
-        return S.GroupAdaptationExpr(expr, adaptation)
+        return S.GroupProjection(expr, adaptation)
 
     ## Composite
     elif ast.IsEStaticProj: #  of ExprOrRaw * LabelOrIndex
         expr = exprOrRawOfAst(ast.Item1)
         labelOrIndex = labelOrIndexOfAst(ast.Item2)
         if labelOrIndex.is_label:
-            return S.StructProjExpr(expr, labelOrIndex)
+            return S.StructProjection(expr, labelOrIndex)
         else:
-            return S.StaticArrayProjExpr(expr, labelOrIndex)
+            return S.ArrayProjection(expr, labelOrIndex)
 
     elif ast.IsEMkGroup: #  of PathIdOrRaw * ExprOrRaw
         name = pathIdentifierOrRawOfAst(ast.Item1)
         expr = exprOrRawOfAst(ast.Item2)
-        return S.MkGroupExpr(name, expr)
+        return S.StructDestructor(name, expr)
 
     elif ast.IsESlice: #  of ExprOrRaw * ExprOrRaw * ExprOrRaw
         expr = exprOrRawOfAst(ast.Item1)
         start = exprOrRawOfAst(ast.Item2)
         end = exprOrRawOfAst(ast.Item3)
-        return S.SliceExpr(expr, start, end)
+        return S.Slice(expr, start, end)
 
     elif ast.IsEDynProj: #  of ExprOrRaw * LabelOrIndex list * ExprOrRaw (* default *)
         expr = exprOrRawOfAst(ast.Item1)
         indices = [labelOrIndexOfAst(item) for item in ast.Item2]
         default = exprOrRawOfAst(ast.Item3)
-        return S.DynProjExpr(expr, indices, default)
+        return S.ProjectionWithDefault(expr, indices, default)
 
     elif ast.IsEMkArray: #  of ExprOrRaw * ExprOrRaw
         expr = exprOrRawOfAst(ast.Item1)
         size = exprOrRawOfAst(ast.Item2)
-        return S.MkArrayExpr(expr, size)
+        return S.ArrayRepetition(expr, size)
 
     elif ast.IsEMkArrayGroup: #  of Group
-        return S.MkArrayGroupExpr(groupOfAst(ast.Item))
+        return S.ArrayConstructor(groupOfAst(ast.Item))
 
     elif ast.IsEMkStruct: #  of Group * PathIdOrRaw option
         group = groupOfAst(ast.Item1)
         if id := getValueOf(ast.Item2):
             id = pathIdentifierOrRawOfAst(id)
-        return S.MkStructExpr(group, id)
+        return S.StructConstructor(group, id)
 
     elif ast.IsEVariant: #  of PathIdOrRaw * Group
         tag = pathIdentifierOrRawOfAst(ast.Item1)
         group = groupOfAst(ast.Item2)
-        return S.VariantExpr(tag, group)
+        return S.VariantValue(tag, group)
 
     elif ast.IsEMkCopy: #  of ExprOrRaw * Modifier list
         expr = exprOrRawOfAst(ast.Item1)
         modifiers = [modifierOfAst(item) for item in ast.Item2]
-        return S.MkCopyExpr(expr, modifiers)
+        return S.FunctionalUpdate(expr, modifiers)
 
     ## Switch
     elif ast.IsEIfte: #  of ExprOrRaw * ExprOrRaw * ExprOrRaw
@@ -566,7 +568,7 @@ def expressionOfAst(ast):
         params = groupOfAst(ast.Item2)
         if luid := getValueOf(ast.Item1.OIInstance):
             luid = luidOfAst(luid)
-        operator = operatorOfAst(ast.Item1.OIOperator)
+        operator = operatorBaseOfAst(ast.Item1.OIOperator)
         return S.OperatorInstance(operator, params, luid)
 
     elif ast.IsEPort: #  of Port
@@ -582,11 +584,11 @@ def expressionOfAst(ast):
         expr = exprOrRawOfAst(ast.Item1)
         params = groupOfAst(ast.Item2)
         init = groupOfAst(ast.Item3)
-        return S.WindowExpr(expr, params, init)
+        return S.Window(expr, params, init)
 
     elif ast.IsEMerge: #  of Group list
         params = [groupOfAst(group) for group in ast.Item]
-        return S.MergeExpr(params)
+        return S.Merge(params)
 
 def portOfAst(ast):
     if ast.IsInstanceIdLuid:
@@ -600,23 +602,22 @@ def portOfAst(ast):
 # Type Expressions
 # ============================================================
 def predefinedTypeOfAst(ast):
-    if ast.IsBool: return S.PredefinedTypes.Bool
-    elif ast.IsChar: return S.PredefinedTypes.Char
-    elif ast.IsInt8: return S.PredefinedTypes.Int8
-    elif ast.IsInt16: return S.PredefinedTypes.Int16
-    elif ast.IsInt32: return S.PredefinedTypes.Int32
-    elif ast.IsInt64: return S.PredefinedTypes.Int64
-    elif ast.IsUint8: return S.PredefinedTypes.Uint8
-    elif ast.IsUint16: return S.PredefinedTypes.Uint16
-    elif ast.IsUint32: return S.PredefinedTypes.Uint32
-    elif ast.IsUint64: return S.PredefinedTypes.Uint64
-    elif ast.IsFloat32: return S.PredefinedTypes.Float32
-    elif ast.IsFloat64: return S.PredefinedTypes.Float64
+    if ast.IsBool: return S.BoolType()
+    elif ast.IsChar: return S.CharType()
+    elif ast.IsInt8: return S.Int8Type()
+    elif ast.IsInt16: return S.Int16Type()
+    elif ast.IsInt32: return S.Int32Type()
+    elif ast.IsInt64: return S.Int64Type()
+    elif ast.IsUint8: return S.Uint8Type()
+    elif ast.IsUint16: return S.Uint16Type()
+    elif ast.IsUint32: return S.Uint32Type()
+    elif ast.IsUint64: return S.Uint64Type()
+    elif ast.IsFloat32: return S.Float32Type()
+    elif ast.IsFloat64: return S.Float64Type()
 
 def typeExpressionOfAst(ast):
     if ast.IsTPredefinedType: # of PredefType
-        type = predefinedTypeOfAst(ast.Item)
-        return S.PredefinedTypeExpr(type)
+        return predefinedTypeOfAst(ast.Item)
 
     elif ast.IsTSizedSigned: # of Expr
         expr = expressionOfAst(ast.Item)
@@ -628,7 +629,7 @@ def typeExpressionOfAst(ast):
 
     elif ast.IsTAlias: # of PathId
         path_id = pathIdentifierOfAst(ast.Item)
-        return S.AliasTypeExpression(path_id)
+        return S.TypeReferenceExpression(path_id)
 
     elif ast.IsTVar: # of StringWithSourcePosition
         var = S.Identifier(nameOfAst(ast.Item), is_name=True)
@@ -641,7 +642,7 @@ def typeExpressionOfAst(ast):
             type = typeExpressionOfAst(ast.Item2)
             return S.StructField(id, type)
         fields = [field(f) for f in ast.Item]
-        return S.StructTypeExpression(fields)
+        return S.StructTypeDefinition(fields)
 
     elif ast.IsTArray: # of TypeExpr * Expr
         type = typeExpressionOfAst(ast.Item1)
@@ -662,7 +663,8 @@ def constDecl(ast):
     id = identifierOfAst(ast.ConstId)
     if value := getValueOf(ast.ConstDefinition):
         value = expressionOfAst(value)
-    type = typeExpressionOfAst(ast.ConstType)
+    if type := getValueOf(ast.ConstType):
+        type = typeExpressionOfAst(type)
     return S.ConstDecl(id, type, value)
 
 def sensorDecl(ast):
@@ -690,7 +692,7 @@ def typeDecl(ast):
             tag = identifierOfAst(ast.Item1)
             if type_expr := getValueOf(ast.Item2):
                 type_expr = typeExpressionOfAst(type_expr)
-            return S.VariantTypeExpr(tag, type_expr)
+            return S.VariantTypeComponent(tag, type_expr)
 
         tags = [variantOfAst(v) for v in ast.TypeDef.Item]
         variant_decl = S.VariantTypeDefinition(tags)
@@ -768,6 +770,7 @@ def varDeclOfAst(ast) -> S.Variable:
         last)
 
 def signatureElementsOfAst(ast):
+    inline = ast.OpInline
     kind = ast.OpNode
     name = S.Identifier(stringOfStringWithSP(ast.OpId))
     inputs = [varDeclOfAst(sig) for sig in ast.OpInputs]
@@ -777,20 +780,24 @@ def signatureElementsOfAst(ast):
     if specialization := getValueOf(ast.OpSpecialization):
         specialization = pathIdentifierOrRawOfAst(specialization)
     pragmas = [S.Pragma(pg) for pg in ast.OpPragmas]
-    return (kind, name, inputs, outputs, sizes, constraints, specialization, pragmas)
+    return (inline, kind, name, inputs, outputs, sizes, constraints, specialization, pragmas)
 
 def signatureOfAst(ast):
-    (kind,
-     name,
-    inputs,
-    outputs,
-    sizes,
-    constraints,
-    specialization,
-    pragmas) = signatureElementsOfAst(ast)
+    (
+        inline,
+        kind,
+        name,
+        inputs,
+        outputs,
+        sizes,
+        constraints,
+        specialization,
+        pragmas
+    ) = signatureElementsOfAst(ast)
 
     return S.Signature(
         id=name,
+        has_inline=inline,
         is_node=kind,
         inputs=inputs,
         outputs=outputs,
@@ -826,12 +833,14 @@ def equationOfAst(ast):
         expr = expressionOfAst(ast.Item2)
         return S.ExprEquation(lhs, expr)
 
-    if ast.IsAutomatonEquation: # of Lhs * StateMachine * SourcePosition.t
-        lhs = equationLhsOfAst(ast.Item1)
+    if ast.IsAutomatonEquation: # of Lhs option * StateMachine * SourcePosition.t
+        if lhs := getValueOf(ast.Item1):
+            lhs = equationLhsOfAst(lhs)
         return stateMachineOfAst(lhs, ast.Item2)
 
-    if ast.ActivateEquation: # of Lhs * Activate * SourcePosition.t
-        lhs = equationLhsOfAst(ast.Item1)
+    if ast.ActivateEquation: # of Lhs option * Activate * SourcePosition.t
+        if lhs := getValueOf(ast.Item1):
+            lhs = equationLhsOfAst(lhs)
         if ast.Item2.IsActivateIf:
             return activateIfOfAst(lhs, ast.Item2)
         # ast.Item2.IsActivateWhen
@@ -918,10 +927,14 @@ def arrowOfAst(ast):
     return spec['arrow']
 
 def arrowSpecOfAst(ast):
-    prio = ast.APrio
+    prio = None if ast.APrio == "-1" else S.Literal(ast.APrio)
+
     if guard := getValueOf(ast.AGuard):
       guard = exprOrRawOfAst(guard)
     action = scopeOfAst(ast.AAction)
+
+    arrow_target = None
+    arrow_fork = None
 
     if fork := getValueOf(ast.AFork): # AFork: Fork option
         if fork.IsAForkTree:
@@ -931,12 +944,12 @@ def arrowSpecOfAst(ast):
             elsif_arrows = [arrowOfAst(item) for item in fork.Item2]
             if else_arrow := getValueOf(fork.Item3):
                 else_arrow = arrowOfAst(else_arrow)
-            arrow_target = S.ForkTree(if_arrow, elsif_arrows, else_arrow)
+            arrow_fork = S.ForkTree(if_arrow, elsif_arrows, else_arrow)
 
         else:
             # AForkPrio of Arrow list
             forks = [forkWithPrioFromAst(arrow) for arrow in fork.Item]
-            arrow_target = S.ForkPriorityList(forks)
+            arrow_fork = S.ForkPriorityList(forks)
 
     else:
         target_id = identificationOfAst(ast.ATarget)
@@ -947,7 +960,7 @@ def arrowSpecOfAst(ast):
     is_if = ast.AIf
 
     return {
-        'arrow': S.Arrow(guard, action, arrow_target),
+        'arrow': S.Arrow(guard, action, arrow_target, arrow_fork),
         'is_if': is_if,
         'prio': prio
     }
@@ -982,28 +995,28 @@ def diagramObjectOfAst(ast):
 
     if description.IsBExpr: # ExprOrRaw
         expr = exprOrRawOfAst(description.Item)
-        return S.ExprDObject(expr, luid, locals)
+        return S.ExprBlock(expr, luid, locals)
 
     if description.IsBDef: # Lhs * SourcePosition.t
         lhs = equationLhsOfAst(description.Item1)
-        return S.DefDObject(lhs, luid, locals)
+        return S.DefBlock(lhs, luid, locals)
 
     if description.IsBRawDef: # Raw.t
         protected = protectedItemOfAst(description.Item)
-        return S.DefDObject(protected, luid, locals)
+        return S.DefBlock(protected, luid, locals)
 
     if description.IsBRawBlock: # Raw.t
         protected = protectedItemOfAst(description.Item)
-        return S.BlockDObject(instance=protected, luid=luid, locals=locals)
+        return S.Block(instance=protected, luid=luid, locals=locals)
 
     if description.IsBBlock: # OperatorInstanceBlock * SourcePosition.t
         (op_block, inst) = operatorInstanceBlockOfAst(description.Item1)
-        return S.BlockDObject(op_block, instance_luid=inst, luid=luid, locals=locals)
+        return S.Block(op_block, instance_luid=inst, luid=luid, locals=locals)
 
     if description.IsBWire: # Connection * Connection list
         source = connectionOfAst(description.Item1)
         targets = [connectionOfAst(conn) for conn in description.Item2]
-        return S.WireDObject(source, targets, luid, locals)
+        return S.Wire(source, targets, luid, locals)
 
     if description.IsBGroup: # GroupOperation * SourcePosition.t
         ast_op = description.Item1
@@ -1016,11 +1029,11 @@ def diagramObjectOfAst(ast):
         else: # IsGNorm
             operation = S.GroupOperation.Normalize
 
-        return S.GroupDObject(operation, luid, locals)
+        return S.Bar(operation, luid, locals)
 
     if description.IsBScopeSection: # ScopeSection
         section = scopeSectionOfAst(description.Item)
-        return S.SectionDObject(section, luid, locals)
+        return S.SectionBlock(section, luid, locals)
 
 def connectionOfAst(ast):
     if ast.IsConnEmpty:
@@ -1035,7 +1048,7 @@ def connectionOfAst(ast):
 def operatorBlockOfAst(ast):
     called = ast.OIBCalled
     if called.IsCallOperator: # Operator
-        op_block = operatorOfAst(called.Item)
+        op_block = operatorBaseOfAst(called.Item)
     else: # CallOperatorExpr of OperatorExprWithSP
         op_block = operatorExprWithSPOfAst(called.Item)
     return op_block
@@ -1091,6 +1104,14 @@ def scopeSectionOfAst(ast):
         return section
 
     if ast.IsSRaw: # Raw.t
+        markup = getMarkup(ast.Item)
+        content = getProtectedString(ast.Item)
+        if markup == 'text':
+            origin = Parser.get_source().name
+            swan = SwanString(f"{content}", origin)
+            section = Parser.get_current_parser().scope_section(swan)
+            section.is_text = True
+            return section
         return S.ProtectedSection(getProtectedString(ast.Item))
 
 def scopeOfAst(ast):
@@ -1105,15 +1126,18 @@ def scopeOfAst(ast):
         scope = S.Scope(sections)
         return scope
 
-def userOperatorOfAst(ast):
-    (kind,
-     name,
-    inputs,
-    outputs,
-    sizes,
-    constraints,
-    specialization,
-    pragmas) = signatureElementsOfAst(ast)
+def operatorOfAst(ast):
+    (
+        inline,
+        kind,
+        name,
+        inputs,
+        outputs,
+        sizes,
+        constraints,
+        specialization,
+        pragmas
+    ) = signatureElementsOfAst(ast)
 
     def delayed_body(owner: S.SwanItem):
         if body := scopeOfAst(ast.OpBody):
@@ -1121,8 +1145,9 @@ def userOperatorOfAst(ast):
             body.owner = owner
         return body
 
-    return S.UserOperator(
+    return S.Operator(
         id=name,
+        has_inline=inline,
         is_node=kind,
         inputs=inputs,
         outputs=outputs,
@@ -1164,7 +1189,7 @@ def declarationOfAst(ast):
         return S.GroupDeclarations(decls)
 
     if ast.IsDOperator:
-        return userOperatorOfAst(ast.Item)
+        return operatorOfAst(ast.Item)
 
     if ast.IsDRaw:
         markup = getMarkup(ast.Item)
@@ -1172,10 +1197,10 @@ def declarationOfAst(ast):
         if markup == 'text':
             origin = Parser.get_source().name
             swan = SwanString(f"{content}", origin)
-            user_op = Parser.get_current_parser().user_operator(swan)
-            return user_op
+            op = Parser.get_current_parser().operator(swan)
+            op.is_text = True
+            return op
         # other protected: const, type, group, sensor
-        # TODO: need to fix or leave such protected elements?
         return S.ProtectedDecl(markup, content)
 
     if ast.IsDSensor:

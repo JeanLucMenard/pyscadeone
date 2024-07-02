@@ -1,4 +1,6 @@
 Coverage
 ========
 
-TBD
+.. note::
+    TODO: To be completed
+

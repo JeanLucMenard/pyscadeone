@@ -63,10 +63,10 @@ def make_path_identifier(make_identifier):
 def make_simple_type():
     def _make_simple_type(type_name):
         if type_name == 'int':
-            return S.PredefinedTypeExpr(S.PredefinedTypes.Int32)
+            return S.Int32Type()
         elif type_name == 'float':
-            return S.PredefinedTypeExpr(S.PredefinedTypes.Float32)
-        return S.PredefinedTypeExpr(S.PredefinedTypes.Bool)
+            return S.Float32Type()
+        return S.BoolType()
     return _make_simple_type
 
 
@@ -74,8 +74,8 @@ def make_simple_type():
 @pytest.fixture
 def make_boxed_int8():
     f = S.StructField(S.Identifier("a"),
-                      S.PredefinedTypeExpr(S.PredefinedTypes.Int8))
-    return S.StructTypeExpression([f])
+                      S.Int8Type())
+    return S.StructTypeDefinition([f])
 
 # Create a type variable 'T1, 'T2, ...
 @pytest.fixture

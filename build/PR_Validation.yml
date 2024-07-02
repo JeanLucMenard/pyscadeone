@@ -13,6 +13,14 @@ variables:
 - name: VersionNumber
 - group: globalaccesstoken
 - group: Artifactory Information
+- group: AzureSignTool
+
+resources:
+  repositories:
+    - repository: DevOps
+      type: git
+      name: ANSYS.SONE.DevOps
+      ref: develop
 
 jobs:
 - job: PythonAPI
@@ -23,8 +31,8 @@ jobs:
 
   - powershell: |
      $contents = Get-Content $(VersionFile)
-     $version = [RegEx]::Match($contents,"(__version__ = `")(?<major>\d)[\.|\:](?<minor>\d)[\.|\:](?<build>\d)[\.|\:](?<revision>.*)(`")")
-     $version = -join($version.Groups["major"],".",$version.Groups["minor"],".",$version.Groups["build"])
+     $version = [RegEx]::Match($contents,"(__version__ = `")(?<major>\d+)\.(?<minor>\d+)\.")
+     $version = -join($version.Groups["major"],".",$version.Groups["minor"])
      Write-Host "Extracted version number: $version"
      $FormattedMinor = Get-Date -Format "yyyyMMddHHMMss"
      Write-Host "FormattedMinor: $FormattedMinor"
@@ -41,7 +49,12 @@ jobs:
       $FileContent = $FileContent -replace '(?m)^__version__.*','__version__ = "$(VersionNumber)"'
       Set-Content -Path $(VersionFile) -Value "$FileContent"
     displayName: 'Update version in Python file'
-    
+
+  - template: templates/SignFile_v2.yml@DevOps
+    parameters:
+      SignIn: 'src\ansys\scadeone\dlls'
+      SignWhat: 'ansys.sone.*.dll$'
+      
   - script: |
       set PATH=$(CYGWIN_PATH)\bin;%PATH%
       set PATH=$(PYTHON_PATH);$(PYTHON_PATH)\Scripts;%PATH%

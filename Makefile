@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2023 ANSYS, Inc.
+# Copyright (c) 2022-2024 ANSYS, Inc.
 # Unauthorized use, distribution, or duplication is prohibited.
 # 
 # use: 'make help', or 'make' for targets help
@@ -100,6 +100,16 @@ _flake8: # internal - Calls flake8
 html:
 	@echo "--- HTML documentation in doc/_build/html"
 	@$(ACTIVATE); sphinx-build.exe -M html doc/source doc/_build -j auto
+
+#help: autodoc    documentation auto-build with browser updates
+autodoc:
+	@$(ACTIVATE); sphinx-autobuild.exe --open-browser --watch src doc/source doc/_build/html
+
+
+#help:link       list sphinx generated links
+links:
+	@$(ACTIVATE); python -m sphinx.ext.intersphinx doc/_build/objects.inv > links.txt
+	@echo "--- Check: links.txt"
 
 #help: build      to build the package. Check FLIT_OPT for flit version control checks
 build:
